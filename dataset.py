@@ -133,4 +133,6 @@ class BrainSegmentationDataset(Dataset):
         mask_tensor = torch.from_numpy(mask.astype(np.float32))
 
         # return tensors
+        print(image_tensor.shape)
+        print(mask_tensor.shape)
         return image_tensor, mask_tensor

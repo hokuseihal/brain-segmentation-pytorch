@@ -1,56 +1,60 @@
 import argparse
-import json
+#import json
 import os
 
 import numpy as np
 import torch
 import torch.optim as optim
-from torch.utils.data import DataLoader
-from tqdm import tqdm
+#from torch.utils.data import DataLoader
+#from tqdm import tqdm
 
-from dataset import BrainSegmentationDataset as Dataset
-from logger import Logger
+#from dataset import BrainSegmentationDataset as Dataset
+#from logger import Logger
 from loss import DiceLoss
-from transform import transforms
+#from transform import transforms
 from unet import UNet
-from utils import log_images, dsc
+#from utils import log_images, dsc
+from multiprocessing import cpu_count
+from own import CrackDataset
+from core import save,addvalue
+from torchvision.utils import save_image
+
+
 
 
 def main(args):
-    makedirs(args)
-    snapshotargs(args)
+    ##makedirs(args)
+    ##snapshotargs(args)
     device = torch.device("cpu" if not torch.cuda.is_available() else args.device)
-
-    loader_train, loader_valid = data_loaders(args)
-    loaders = {"train": loader_train, "valid": loader_valid}
-
-    unet = UNet(in_channels=Dataset.in_channels, out_channels=Dataset.out_channels)
+    print(device)
+    #loader_train, loader_valid = data_loaders(args)
+    #loaders = {"train": loader_train, "valid": loader_valid}
+    dataset=CrackDataset('raw/*','mask/*')
+    traindataset,validdataset=torch.utils.data.random_split(dataset,[n:=int(len(dataset)*0.8),len(dataset)-n])
+    trainloader=torch.utils.data.DataLoader(traindataset,batch_size=args.batch_size,shuffle=True,num_workers=args.workers)
+    validloader=torch.utils.data.DataLoader(validdataset,batch_size=args.batch_size,shuffle=True,num_workers=args.workers)
+    loaders={'train':trainloader,'valid':validloader}
+    unet = UNet(in_channels=dataset.in_channels, out_channels=dataset.out_channels)
+    if args.pretrained:
+        unet = torch.hub.load('mateuszbuda/brain-segmentation-pytorch', 'unet',
+                               in_channels=3, out_channels=1, init_features=32, pretrained=True)
     unet.to(device)
-
     dsc_loss = DiceLoss()
-    best_validation_dsc = 0.0
 
     optimizer = optim.Adam(unet.parameters(), lr=args.lr)
-
-    logger = Logger(args.logs)
-    loss_train = []
-    loss_valid = []
-
-    step = 0
-
-    for epoch in tqdm(range(args.epochs), total=args.epochs):
+    writer={}
+    miouf=lambda pred,true,thresh=0.5:((pred>thresh)*true).sum()/((pred>thresh)+true).sum()
+    os.makedirs('data',exist_ok=True)
+    print('start train')
+    for epoch in range(args.epochs):
+        valid_miou=[]
         for phase in ["train", "valid"]:
             if phase == "train":
                 unet.train()
             else:
                 unet.eval()
 
-            validation_pred = []
-            validation_true = []
-
             for i, data in enumerate(loaders[phase]):
-                if phase == "train":
-                    step += 1
 
                 x, y_true = data
                 x, y_true = x.to(device), y_true.to(device)
@@ -62,119 +66,19 @@ def main(args):
 
                     loss = dsc_loss(y_pred, y_true)
 
-                    if phase == "valid":
-                        loss_valid.append(loss.item())
-                        y_pred_np = y_pred.detach().cpu().numpy()
-                        validation_pred.extend(
-                            [y_pred_np[s] for s in range(y_pred_np.shape[0])]
-                        )
-                        y_true_np = y_true.detach().cpu().numpy()
-                        validation_true.extend(
-                            [y_true_np[s] for s in range(y_true_np.shape[0])]
-                        )
-                        if (epoch % args.vis_freq == 0) or (epoch == args.epochs - 1):
-                            if i * args.batch_size < args.vis_images:
-                                tag = "image/{}".format(i)
-                                num_images = args.vis_images - i * args.batch_size
-                                logger.image_list_summary(
-                                    tag,
-                                    log_images(x, y_true, y_pred)[:num_images],
-                                    step,
-                                )
-
                     if phase == "train":
-                        loss_train.append(loss.item())
+                        addvalue(writer,'loss:train',loss.item(),epoch)
                         loss.backward()
                         optimizer.step()
-
-                if phase == "train" and (step + 1) % 10 == 0:
-                    log_loss_summary(logger, loss_train, step)
-                    loss_train = []
-
-            if phase == "valid":
-                log_loss_summary(logger, loss_valid, step, prefix="val_")
-                mean_dsc = np.mean(
-                    dsc_per_volume(
-                        validation_pred,
-                        validation_true,
-                        loader_valid.dataset.patient_slice_index,
-                    )
-                )
-                logger.scalar_summary("val_dsc", mean_dsc, step)
-                if mean_dsc > best_validation_dsc:
-                    best_validation_dsc = mean_dsc
-                    torch.save(unet.state_dict(), os.path.join(args.weights, "unet.pt"))
-                loss_valid = []
-
-    print("Best validation mean DSC: {:4f}".format(best_validation_dsc))
-
-
-def data_loaders(args):
-    dataset_train, dataset_valid = datasets(args)
-
-    def worker_init(worker_id):
-        np.random.seed(42 + worker_id)
-
-    loader_train = DataLoader(
-        dataset_train,
-        batch_size=args.batch_size,
-        shuffle=True,
-        drop_last=True,
-        num_workers=args.workers,
-        worker_init_fn=worker_init,
-    )
-    loader_valid = DataLoader(
-        dataset_valid,
-        batch_size=args.batch_size,
-        drop_last=False,
-        num_workers=args.workers,
-        worker_init_fn=worker_init,
-    )
-
-    return loader_train, loader_valid
-
-
-def datasets(args):
-    train = Dataset(
-        images_dir=args.images,
-        subset="train",
-        image_size=args.image_size,
-        transform=transforms(scale=args.aug_scale, angle=args.aug_angle, flip_prob=0.5),
-    )
-    valid = Dataset(
-        images_dir=args.images,
-        subset="validation",
-        image_size=args.image_size,
-        random_sampling=False,
-    )
-    return train, valid
-
-
-def dsc_per_volume(validation_pred, validation_true, patient_slice_index):
-    dsc_list = []
-    num_slices = np.bincount([p[0] for p in patient_slice_index])
-    index = 0
-    for p in range(len(num_slices)):
-        y_pred = np.array(validation_pred[index : index + num_slices[p]])
-        y_true = np.array(validation_true[index : index + num_slices[p]])
-        dsc_list.append(dsc(y_pred, y_true))
-        index += num_slices[p]
-    return dsc_list
-
-
-def log_loss_summary(logger, loss, step, prefix=""):
-    logger.scalar_summary(prefix + "loss", np.mean(loss), step)
-
-
-def makedirs(args):
-    os.makedirs(args.weights, exist_ok=True)
-    os.makedirs(args.logs, exist_ok=True)
-
-
-def snapshotargs(args):
-    args_file = os.path.join(args.logs, "args.json")
-    with open(args_file, "w") as fp:
-        json.dump(vars(args), fp)
+                    if phase == "valid":
+                        addvalue(writer,'loss:valid',loss.item(),epoch)
+                        miou=miouf(y_pred,y_true)
+                        valid_miou.append(miou.item())
+                        addvalue(writer,'acc:miou',miou,epoch)
+                        save_image(torch.cat([y_true,y_pred],dim=2),f'data/{epoch}.jpg')
+            print(f'{epoch=}/{args.epochs}:{phase}:{loss.item():.4f}')
+            if phase=="valid":print(f'test:{np.mean(valid_miou)=:.4f}')
+        save(epoch,unet,'data',writer)
 
 
 if __name__ == "__main__":
@@ -184,8 +88,8 @@ if __name__ == "__main__":
     parser.add_argument(
         "--batch-size",
         type=int,
-        default=16,
-        help="input batch size for training (default: 16)",
+        default=8,
+        help="input batch size for training (default: 8)",
     )
     parser.add_argument(
         "--epochs",
@@ -208,8 +112,8 @@ if __name__ == "__main__":
     parser.add_argument(
         "--workers",
         type=int,
-        default=4,
-        help="number of workers for data loading (default: 4)",
+        default=cpu_count(),
+        help="number of workers for data loading (default: max)",
     )
     parser.add_argument(
         "--vis-images",
@@ -249,6 +153,11 @@ if __name__ == "__main__":
         type=int,
         default=15,
         help="rotation angle range in degrees for augmentation (default: 15)",
+    )
+    parser.add_argument(
+        "--pretrained",
+        default=False,
+        action='store_true'
     )
     args = parser.parse_args()
     main(args)
