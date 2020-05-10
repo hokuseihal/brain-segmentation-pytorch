@@ -75,7 +75,7 @@ def main(args):
                         miou=miouf(y_pred,y_true)
                         valid_miou.append(miou.item())
                         addvalue(writer,'acc:miou',miou,epoch)
-                        save_image(torch.cat([y_true,y_pred],dim=2),f'data/{epoch}.jpg')
+                        save_image(torch.cat([x,y_true.repeat(1,3,1,1),y_pred.repeat(1,3,1,1)],dim=2),f'data/{epoch}.jpg')
             print(f'{epoch=}/{args.epochs}:{phase}:{loss.item():.4f}')
             if phase=="valid":print(f'test:{np.mean(valid_miou)=:.4f}')
         save(epoch,unet,'data',writer)
