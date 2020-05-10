@@ -18,6 +18,7 @@ from multiprocessing import cpu_count
 from own import CrackDataset
 from core import save,addvalue
 from torchvision.utils import save_image
+import random
 
 
 
@@ -30,7 +31,12 @@ def main(args):
     #loader_train, loader_valid = data_loaders(args)
     #loaders = {"train": loader_train, "valid": loader_valid}
     dataset=CrackDataset('raw','mask')
-    traindataset,validdataset=torch.utils.data.random_split(dataset,[n:=int(len(dataset)*0.8),len(dataset)-n])
+    k_shot=int(len(dataset)*0.8) if args.k_shot==0 else args.k_shot
+    trainidx=random.sample(range(len(dataset)),k=k_shot)
+    validx=list(set(list(range(len(dataset))))-set(trainidx))
+    traindataset=torch.utils.data.Subset(dataset,trainidx)
+    validdataset=torch.utils.data.Subset(dataset,validx)
+    #traindataset,validdataset=torch.utils.data.random_split(dataset,[n:=int(len(dataset)*0.8),len(dataset)-n])
     trainloader=torch.utils.data.DataLoader(traindataset,batch_size=args.batch_size,shuffle=True,num_workers=args.workers)
     validloader=torch.utils.data.DataLoader(validdataset,batch_size=args.batch_size,shuffle=True,num_workers=args.workers)
     loaders={'train':trainloader,'valid':validloader}
@@ -48,7 +54,7 @@ def main(args):
     print('start train')
     for epoch in range(args.epochs):
         valid_miou=[]
-        for phase in ["train", "valid"]:
+        for phase in ["train"]*10+[ "valid"]:
             if phase == "train":
                 unet.train()
             else:
@@ -75,7 +81,7 @@ def main(args):
                         miou=miouf(y_pred,y_true)
                         valid_miou.append(miou.item())
                         addvalue(writer,'acc:miou',miou,epoch)
-                        save_image(torch.cat([x,y_true.repeat(1,3,1,1),y_pred.repeat(1,3,1,1)],dim=2),f'data/{epoch}.jpg')
+                        if i==0:save_image(torch.cat([x,y_true.repeat(1,3,1,1),y_pred.repeat(1,3,1,1)],dim=2),f'data/{epoch}.jpg')
             print(f'{epoch=}/{args.epochs}:{phase}:{loss.item():.4f}')
             if phase=="valid":print(f'test:{np.mean(valid_miou)=:.4f}')
         save(epoch,unet,'data',writer)
@@ -158,6 +164,11 @@ if __name__ == "__main__":
         "--pretrained",
         default=False,
         action='store_true'
+    )
+    parser.add_argument(
+        "--k-shot",
+        default=0,
+        type=int
     )
     args = parser.parse_args()
     main(args)
