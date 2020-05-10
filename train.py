@@ -29,7 +29,7 @@ def main(args):
     print(device)
     #loader_train, loader_valid = data_loaders(args)
     #loaders = {"train": loader_train, "valid": loader_valid}
-    dataset=CrackDataset('raw/*','mask/*')
+    dataset=CrackDataset('raw','mask')
     traindataset,validdataset=torch.utils.data.random_split(dataset,[n:=int(len(dataset)*0.8),len(dataset)-n])
     trainloader=torch.utils.data.DataLoader(traindataset,batch_size=args.batch_size,shuffle=True,num_workers=args.workers)
     validloader=torch.utils.data.DataLoader(validdataset,batch_size=args.batch_size,shuffle=True,num_workers=args.workers)
@@ -43,7 +43,7 @@ def main(args):
 
     optimizer = optim.Adam(unet.parameters(), lr=args.lr)
     writer={}
-    miouf=lambda pred,true,thresh=0.5:((pred>thresh)*true).sum()/((pred>thresh)+true).sum()
+    miouf=lambda pred,true,thresh=0.5:((pred>thresh)*(true>thresh)).sum().float()/((pred>thresh)+(true>thresh)).sum().float()
     os.makedirs('data',exist_ok=True)
     print('start train')
     for epoch in range(args.epochs):
