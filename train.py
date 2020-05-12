@@ -54,7 +54,7 @@ def main(args):
     print('start train')
     for epoch in range(args.epochs):
         valid_miou=[]
-        for phase in ["train"]*10+[ "valid"]:
+        for phase in ["train"]*args.num_train+[ "valid"]:
             if phase == "train":
                 unet.train()
             else:
@@ -168,6 +168,11 @@ if __name__ == "__main__":
     parser.add_argument(
         "--k-shot",
         default=0,
+        type=int
+    )
+    parser.add_argument(
+        "--num-train",
+        default=1,
         type=int
     )
     args = parser.parse_args()
