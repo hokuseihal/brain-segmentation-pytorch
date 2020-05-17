@@ -40,7 +40,7 @@ def main(args):
     trainloader=torch.utils.data.DataLoader(traindataset,batch_size=args.batch_size,shuffle=True,num_workers=args.workers)
     validloader=torch.utils.data.DataLoader(validdataset,batch_size=args.batch_size,shuffle=True,num_workers=args.workers)
     loaders={'train':trainloader,'valid':validloader}
-    unet = UNet(in_channels=dataset.in_channels, out_channels=dataset.out_channels)
+    unet = UNet(in_channels=dataset.in_channels, out_channels=dataset.out_channels,cutpath=args.cutpath)
     if args.pretrained:
         unet = torch.hub.load('mateuszbuda/brain-segmentation-pytorch', 'unet',
                                in_channels=3, out_channels=1, init_features=32, pretrained=True)
@@ -80,7 +80,7 @@ def main(args):
                         addvalue(writer,'loss:valid',loss.item(),epoch)
                         miou=miouf(y_pred,y_true)
                         valid_miou.append(miou.item())
-                        addvalue(writer,'acc:miou',miou,epoch)
+                        addvalue(writer,'acc:miou',miou.item(),epoch)
                         if i==0:save_image(torch.cat([x,y_true.repeat(1,3,1,1),y_pred.repeat(1,3,1,1)],dim=2),f'data/{epoch}.jpg')
             print(f'{epoch=}/{args.epochs}:{phase}:{loss.item():.4f}')
             if phase=="valid":print(f'test:{np.mean(valid_miou)=:.4f}')
@@ -174,6 +174,11 @@ if __name__ == "__main__":
         "--num-train",
         default=1,
         type=int
+    )
+    parser.add_argument(
+        "--cutpath",
+        default=False,
+        action='store_true'
     )
     args = parser.parse_args()
     main(args)
