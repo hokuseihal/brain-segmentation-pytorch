@@ -30,7 +30,7 @@ def main(args):
     print(device)
     #loader_train, loader_valid = data_loaders(args)
     #loaders = {"train": loader_train, "valid": loader_valid}
-    dataset=CrackDataset('raw','mask')
+    dataset=CrackDataset(args.rawfolder,args.maskfolder)
     k_shot=int(len(dataset)*0.8) if args.k_shot==0 else args.k_shot
     trainidx=random.sample(range(len(dataset)),k=k_shot)
     validx=list(set(list(range(len(dataset))))-set(trainidx))
@@ -183,6 +183,16 @@ if __name__ == "__main__":
     parser.add_argument(
         "--savefolder",
         default='data',
+        type=str
+    )
+    parser.add_argument(
+        "--rawfolder",
+        default='raw',
+        type=str
+    )
+    parser.add_argument(
+        "--maskfolder",
+        default='mask',
         type=str
     )
     args = parser.parse_args()
