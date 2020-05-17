@@ -50,7 +50,7 @@ def main(args):
     optimizer = optim.Adam(unet.parameters(), lr=args.lr)
     writer={}
     miouf=lambda pred,true,thresh=0.5:((pred>thresh)*(true>thresh)).sum().float()/((pred>thresh)+(true>thresh)).sum().float()
-    os.makedirs('data',exist_ok=True)
+    os.makedirs(args.savefolder,exist_ok=True)
     print('start train')
     for epoch in range(args.epochs):
         valid_miou=[]
@@ -81,10 +81,10 @@ def main(args):
                         miou=miouf(y_pred,y_true)
                         valid_miou.append(miou.item())
                         addvalue(writer,'acc:miou',miou.item(),epoch)
-                        if i==0:save_image(torch.cat([x,y_true.repeat(1,3,1,1),y_pred.repeat(1,3,1,1)],dim=2),f'data/{epoch}.jpg')
+                        if i==0:save_image(torch.cat([x,y_true.repeat(1,3,1,1),y_pred.repeat(1,3,1,1)],dim=2),f'{args.savefolder}/{epoch}.jpg')
             print(f'{epoch=}/{args.epochs}:{phase}:{loss.item():.4f}')
             if phase=="valid":print(f'test:{np.mean(valid_miou)=:.4f}')
-        save(epoch,unet,'data',writer)
+        save(epoch,unet,args.savefolder,writer)
 
 
 if __name__ == "__main__":
@@ -179,6 +179,11 @@ if __name__ == "__main__":
         "--cutpath",
         default=False,
         action='store_true'
+    )
+    parser.add_argument(
+        "--savefolder",
+        default='data',
+        type=str
     )
     args = parser.parse_args()
     main(args)
