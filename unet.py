@@ -53,22 +53,22 @@ class UNet(nn.Module):
 
         dec4 = self.upconv4(bottleneck)
         if self.cutpath:
-            enc4=0
+            enc4=torch.zeros_like(enc4)
         dec4 = torch.cat((dec4, enc4), dim=1)
         dec4 = self.decoder4(dec4)
         dec3 = self.upconv3(dec4)
         if self.cutpath:
-            enc3=0
+            enc3=torch.zeros_like(enc3)
         dec3 = torch.cat((dec3, enc3), dim=1)
         dec3 = self.decoder3(dec3)
         dec2 = self.upconv2(dec3)
         if self.cutpath:
-            enc2=0
+            enc2=torch.zeros_like(enc2)
         dec2 = torch.cat((dec2, enc2), dim=1)
         dec2 = self.decoder2(dec2)
         dec1 = self.upconv1(dec2)
         if self.cutpath:
-            enc1=0
+            enc1=torch.zeros_like(enc1)
         dec1 = torch.cat((dec1, enc1), dim=1)
         dec1 = self.decoder1(dec1)
         return torch.sigmoid(self.conv(dec1))
