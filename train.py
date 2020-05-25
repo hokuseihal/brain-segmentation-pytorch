@@ -10,12 +10,12 @@ import torch.optim as optim
 
 #from dataset import BrainSegmentationDataset as Dataset
 #from logger import Logger
-from loss import DiceLoss
+from loss import DiceLoss,FocalLoss
 #from transform import transforms
 from unet import UNet
 #from utils import log_images, dsc
 from multiprocessing import cpu_count
-from own import CrackDataset
+from own import MulticlassCrackDataset as Dataset
 from core import save,addvalue
 from torchvision.utils import save_image
 import random
@@ -29,7 +29,7 @@ def main(args):
     print(device)
     #loader_train, loader_valid = data_loaders(args)
     #loaders = {"train": loader_train, "valid": loader_valid}
-    dataset=CrackDataset(args.rawfolder,args.maskfolder)
+    dataset=Dataset(args.rawfolder,args.maskfolder)
     k_shot=int(len(dataset)*0.8) if args.k_shot==0 else args.k_shot
     trainidx=random.sample(range(len(dataset)),k=k_shot)
     validx=list(set(list(range(len(dataset))))-set(trainidx))

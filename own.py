@@ -21,7 +21,7 @@ class CrackDataset(torch.utils.data.Dataset):
         imraw=Image.open(self.raw[item])
         immask=Image.open(self.mask[item])
         return self.transform(imraw),self.transform(immask)
-class MulticlassCrackDataset(torch.utils.data.Dataste):
+class MulticlassCrackDataset(torch.utils.data.Dataset):
     def __init__(self,rawp,maskp,transform=None,clscolor=[[0,0,0],[255,255,255],[0,0,255]]):
         self.mask=glob.glob(f'{maskp}/*')
         self.raw=[imgp for imgp in sorted(glob.glob(f'{rawp}/*')) if os.path.basename(imgp).split('.')[0] in [os.path.basename(rawimgp).split('.')[0] for rawimgp in self.mask]]
