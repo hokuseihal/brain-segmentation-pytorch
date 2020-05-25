@@ -200,5 +200,9 @@ if __name__ == "__main__":
         default='mask',
         type=str
     )
+    parser.add_argument(
+        '--loss',
+        default='CE',
+    )
     args = parser.parse_args()
     main(args)
