@@ -40,7 +40,7 @@ class MulticlassCrackDataset(torch.utils.data.Dataset):
         allmask=torch.zeros_like(immask[0]).bool()
         for clsidx,color in enumerate(self.clscolor):
             color=color.view(3,1,1)
-            immask[(immask==color).sum(0)==3]=clsidx
+            immask[:,(immask==color).sum(0)==3]=clsidx
             allmask[(immask==color).sum(0)==3]=True
 
         assert allmask.all()
