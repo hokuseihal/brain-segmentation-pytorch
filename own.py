@@ -3,12 +3,12 @@ from torchvision.transforms import Resize,ToTensor,Compose,Grayscale
 import glob
 import random
 from PIL import Image
-
+import os
 
 class CrackDataset(torch.utils.data.Dataset):
     def __init__(self,rawp,maskp,transform=None):
         self.raw=sorted(glob.glob(f'{rawp}/*'))
-        self.mask=sorted(glob.glob(f'{maskp}/*'))
+        self.mask=[imgp for imgp in sorted(glob.glob(f'{maskp}/*')) if imgp.replace(maskp,rawp).replace('jpg','png') in self.raw]
         self.in_channels=3
         self.out_channels=1
         self.transform=transform if transform is not None else Compose([Resize((256,256)),ToTensor()])
