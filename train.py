@@ -19,8 +19,7 @@ from own import CrackDataset
 from core import save,addvalue
 from torchvision.utils import save_image
 import random
-
-
+import torch.nn as nn
 
 
 def main(args):
@@ -46,6 +45,12 @@ def main(args):
                                in_channels=3, out_channels=1, init_features=32, pretrained=True)
     unet.to(device)
     dsc_loss = DiceLoss()
+    if args.loss=='DSC':
+        loss=dsc_loss
+    elif args.loss=='CE':
+        loss=nn.CrossEntropyLoss()
+    elif args.loss=='Focal':
+        loss=FocalLoss()
 
     optimizer = optim.Adam(unet.parameters(), lr=args.lr)
     writer={}
@@ -70,7 +75,7 @@ def main(args):
                 with torch.set_grad_enabled(phase == "train"):
                     y_pred = unet(x)
 
-                    loss = dsc_loss(y_pred, y_true)
+                    loss = loss(y_pred, y_true)
 
                     if phase == "train":
                         addvalue(writer,'loss:train',loss.item(),epoch)
