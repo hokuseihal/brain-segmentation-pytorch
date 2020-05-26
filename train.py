@@ -72,7 +72,7 @@ def main(args):
             iou=((pred==clsidx) & (t_idx==clsidx)).sum()/((pred==clsidx) | (t_idx==clsidx)).sum().float()
             allmask[t_idx==clsidx]=True
             miou+=iou
-        assert allmask.all()
+        assert allmask.float().mean()<1e-3
         return miou
     os.makedirs(args.savefolder,exist_ok=True)
     print('start train')
