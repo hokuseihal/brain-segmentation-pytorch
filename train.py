@@ -65,14 +65,14 @@ def main(args):
     miouf=lambda pred,true,thresh=0.5:((pred>thresh)*(true>thresh)).sum().float()/((pred>thresh)+(true>thresh)).sum().float()
     def miouf(pred,t_idx,numcls):
         assert t_idx.max()+1<=numcls
-        allmask=torch.zeros_like(t_idx).bool()
+        #allmask=torch.zeros_like(t_idx).bool()
         pred=pred.argmax(1).detach()
         miou=0
         for clsidx in range(1,numcls):
             iou=((pred==clsidx) & (t_idx==clsidx)).sum()/((pred==clsidx) | (t_idx==clsidx)).sum().float()
-            allmask[t_idx==clsidx]=True
+            #allmask[t_idx==clsidx]=True
             miou+=iou
-        assert allmask.float().mean()<1e-3
+        #assert allmask.float().mean()<1e-3
         return miou
     os.makedirs(args.savefolder,exist_ok=True)
     print('start train')
