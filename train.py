@@ -192,12 +192,12 @@ if __name__ == "__main__":
     )
     parser.add_argument(
         "--rawfolder",
-        default='raw',
+        default='../data/owncack/scene/image',
         type=str
     )
     parser.add_argument(
         "--maskfolder",
-        default='mask',
+        default='../data/owncrack/scene/image',
         type=str
     )
     parser.add_argument(

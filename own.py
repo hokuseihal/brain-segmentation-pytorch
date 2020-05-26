@@ -38,11 +38,12 @@ class MulticlassCrackDataset(torch.utils.data.Dataset):
         imraw=self.transform(Image.open(self.raw[item]))
         immask=self.transform(Image.open(self.mask[item]))[:3]
         allmask=torch.zeros_like(immask[0]).bool()
+        clsmask=torch.zeros_like(allmask).long()
         for clsidx,color in enumerate(self.clscolor):
             color=color.view(3,1,1)
-            immask[:,(immask==color).sum(0)==3]=clsidx
+            clsmask[(immask==color).sum(0)==3]=clsidx
             allmask[(immask==color).sum(0)==3]=True
-
+        
         assert allmask.all()
 
-        return imraw,immask.long()
+        return imraw,clsmask
