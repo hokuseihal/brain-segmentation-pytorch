@@ -66,12 +66,12 @@ def main(args):
     def miouf(pred,t_idx,numcls):
         assert t_idx.max()+1<=numcls
         #allmask=torch.zeros_like(t_idx).bool()
-        pred=pred.argmax(1).detach()
+        #pred=pred.argmax(1).detach()
         miou=0
         for clsidx in range(1,numcls):
-            iou=((pred==clsidx) & (t_idx==clsidx)).sum()/((pred==clsidx) | (t_idx==clsidx)).sum().float()
+            iou=(((pred==clsidx) & (t_idx==clsidx)).sum())/(((pred==clsidx) | (t_idx==clsidx)).sum().float())
             #allmask[t_idx==clsidx]=True
-            miou+=iou
+            miou+=iou/(numcls-1)
         #assert allmask.float().mean()<1e-3
         return miou
     os.makedirs(args.savefolder,exist_ok=True)
@@ -85,9 +85,9 @@ def main(args):
                 unet.eval()
 
             for i, data in enumerate(loaders[phase]):
-
                 x, y_true = data
                 x, y_true = x.to(device), y_true.to(device)
+                print(miouf(y_true,y_true,len(dataset.clscolor)))
 
                 optimizer.zero_grad()
 
