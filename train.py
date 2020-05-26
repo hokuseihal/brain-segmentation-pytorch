@@ -87,7 +87,6 @@ def main(args):
             for i, data in enumerate(loaders[phase]):
                 x, y_true = data
                 x, y_true = x.to(device), y_true.to(device)
-                print(miouf(y_true,y_true,len(dataset.clscolor)))
 
                 optimizer.zero_grad()
 
