@@ -66,7 +66,7 @@ def main(args):
     def miouf(pred,t_idx,numcls):
         assert t_idx.max()+1<=numcls
         #allmask=torch.zeros_like(t_idx).bool()
-        #pred=pred.argmax(1).detach()
+        pred=pred.argmax(1).detach()
         miou=0
         for clsidx in range(1,numcls):
             iou=(((pred==clsidx) & (t_idx==clsidx)).sum())/(((pred==clsidx) | (t_idx==clsidx)).sum().float())
