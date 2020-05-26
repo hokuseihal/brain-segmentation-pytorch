@@ -21,7 +21,15 @@ from torchvision.utils import save_image
 import random
 import torch.nn as nn
 
-
+def setcolor(idxtendor,colors):
+    assert idxtendor.max()+1<=len(colors)
+    B,H,W=idxtendor.shape
+    colimg=torch.zeros(B,3,H,W).to(idxtendor.device).to(idxtendor.device)
+    colors=colors[1:]
+    for b in range(B):
+        for idx,color in enumerate(colors,1):
+            colimg[b,:,idxtendor[b]==idx]=(color.view(3,1)).to(idxtendor.device).float()
+    return colimg
 def main(args):
     ##makedirs(args)
     ##snapshotargs(args)
@@ -46,15 +54,26 @@ def main(args):
     unet.to(device)
     dsc_loss = DiceLoss()
     if args.loss=='DSC':
-        loss=dsc_loss
+        lossf=dsc_loss
     elif args.loss=='CE':
-        loss=nn.CrossEntropyLoss()
+        lossf=nn.CrossEntropyLoss()
     elif args.loss=='Focal':
-        loss=FocalLoss()
+        lossf=FocalLoss()
 
     optimizer = optim.Adam(unet.parameters(), lr=args.lr)
     writer={}
     miouf=lambda pred,true,thresh=0.5:((pred>thresh)*(true>thresh)).sum().float()/((pred>thresh)+(true>thresh)).sum().float()
+    def miouf(pred,t_idx,numcls):
+        assert t_idx.max()+1<=numcls
+        allmask=torch.zeros_like(t_idx).bool()
+        pred=pred.argmax(1).detach()
+        miou=0
+        for clsidx in range(1,numcls):
+            iou=((pred==clsidx) & (t_idx==clsidx)).sum()/((pred==clsidx) | (t_idx==clsidx)).sum().float()
+            allmask[t_idx==clsidx]=True
+            miou+=iou
+        assert allmask.all()
+        return miou
     os.makedirs(args.savefolder,exist_ok=True)
     print('start train')
     for epoch in range(args.epochs):
@@ -75,7 +94,7 @@ def main(args):
                 with torch.set_grad_enabled(phase == "train"):
                     y_pred = unet(x)
 
-                    loss = loss(y_pred, y_true)
+                    loss = lossf(y_pred, y_true)
 
                     if phase == "train":
                         addvalue(writer,'loss:train',loss.item(),epoch)
@@ -83,12 +102,12 @@ def main(args):
                         optimizer.step()
                     if phase == "valid":
                         addvalue(writer,'loss:valid',loss.item(),epoch)
-                        miou=miouf(y_pred,y_true)
+                        miou=miouf(y_pred,y_true,len(dataset.clscolor))
                         valid_miou.append(miou.item())
                         addvalue(writer,'acc:miou',miou.item(),epoch)
-                        if i==0:save_image(torch.cat([x,y_true.repeat(1,3,1,1),y_pred.repeat(1,3,1,1)],dim=2),f'{args.savefolder}/{epoch}.jpg')
+                        if i==0:save_image(torch.cat([x,setcolor(y_true,dataset.clscolor),setcolor(y_pred.argmax(1),dataset.clscolor)],dim=2),f'{args.savefolder}/{epoch}.jpg')
             print(f'{epoch=}/{args.epochs}:{phase}:{loss.item():.4f}')
-            if phase=="valid":print(f'test:{np.mean(valid_miou)=:.4f}')
+            if phase=="valid":print(f'test:miou:{np.mean(valid_miou):.4f}')
         save(epoch,unet,args.savefolder,writer)
 
 
@@ -187,17 +206,17 @@ if __name__ == "__main__":
     )
     parser.add_argument(
         "--savefolder",
-        default='data',
+        default='data/tmp',
         type=str
     )
     parser.add_argument(
         "--rawfolder",
-        default='../data/owncack/scene/image',
+        default='../data/owncrack/scene/image',
         type=str
     )
     parser.add_argument(
         "--maskfolder",
-        default='../data/owncrack/scene/image',
+        default='../data/owncrack/scene/mask',
         type=str
     )
     parser.add_argument(
