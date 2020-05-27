@@ -25,5 +25,5 @@ class FocalLoss(nn.Module):
         #y_pred(B,C,H,W)
         #y_true(B,H,W)
         y_pred=F.softmax(y_pred,1)
-        pt=torch.gather(y_pred,1,y_true)
+        pt=torch.gather(y_pred,1,y_true.unsqueeze(1))
         return (-((1-pt)**self.gamma)*torch.log(pt)).mean()
