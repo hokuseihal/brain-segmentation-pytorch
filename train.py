@@ -4,6 +4,7 @@ import os
 
 import numpy as np
 import torch
+import torch.nn as nn
 import torch.optim as optim
 #from torch.utils.data import DataLoader
 #from tqdm import tqdm
@@ -51,6 +52,8 @@ def main(args):
     if args.pretrained:
         unet = torch.hub.load('mateuszbuda/brain-segmentation-pytorch', 'unet',
                                in_channels=3, out_channels=1, init_features=32, pretrained=True)
+        if dataset.out_channels!=1:
+            unet.conv=nn.Conv2d(in_channels=32,out_channels=dataset.out_channels,kernel_size=1)
     unet.to(device)
     dsc_loss = DiceLoss()
     if args.loss=='DSC':
@@ -69,6 +72,8 @@ def main(args):
         pred=pred.argmax(1).detach()
         miou=0
         for clsidx in range(1,numcls):
+            if not (t_idx==clsidx).any():
+                continue
             iou=(((pred==clsidx) & (t_idx==clsidx)).sum())/(((pred==clsidx) | (t_idx==clsidx)).sum().float())
             #allmask[t_idx==clsidx]=True
             miou+=iou/(numcls-1)

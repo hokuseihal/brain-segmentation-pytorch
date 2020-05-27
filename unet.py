@@ -50,6 +50,7 @@ class UNet(nn.Module):
         enc4 = self.encoder4(self.pool3(enc3))
 
         bottleneck = self.bottleneck(self.pool4(enc4))
+        #TODO save enc1~4 bottleneck as image
 
         dec4 = self.upconv4(bottleneck)
         if self.cutpath:
