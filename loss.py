@@ -21,7 +21,7 @@ class FocalLoss(nn.Module):
     def __init__(self,gamma=2):
         super(FocalLoss,self).__init__()
         self.gamma=gamma
-    def foward(self,y_pred,y_true):
+    def forward(self,y_pred,y_true):
         #y_pred(B,C,H,W)
         #y_true(B,H,W)
         y_pred=F.softmax(y_pred,1)
