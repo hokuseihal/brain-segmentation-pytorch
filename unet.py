@@ -3,7 +3,6 @@ from collections import OrderedDict
 import torch
 import torch.nn as nn
 
-
 class UNet(nn.Module):
 
     def __init__(self, in_channels=3, out_channels=1, init_features=32,cutpath=False):
@@ -106,3 +105,14 @@ class UNet(nn.Module):
                 ]
             )
         )
+
+class wrapped_UNet(nn.Module):
+    def __init__(self,unet,in_ch,out_ch):
+        super(wrapped_UNet, self).__init__()
+        self.unet=unet
+        self.conv=nn.Conv2d(in_ch,out_ch,1)
+
+    def forward(self,x):
+        x=self.unet(x)
+        x=self.conv(x)
+        return x
