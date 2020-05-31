@@ -1,89 +1,71 @@
 import argparse
-#import json
 import os
+import random
+from multiprocessing import cpu_count
 
 import numpy as np
 import torch
 import torch.nn as nn
 import torch.optim as optim
-#from torch.utils.data import DataLoader
-#from tqdm import tqdm
-
-#from dataset import BrainSegmentationDataset as Dataset
-#from logger import Logger
-from loss import DiceLoss,FocalLoss
-#from transform import transforms
-from unet import UNet
-#from utils import log_images, dsc
-from multiprocessing import cpu_count
-from own import MulticlassCrackDataset as Dataset
-from core import save,addvalue
 from torchvision.utils import save_image
-import random
-import torch.nn as nn
 
-def setcolor(idxtendor,colors):
-    assert idxtendor.max()+1<=len(colors)
-    B,H,W=idxtendor.shape
-    colimg=torch.zeros(B,3,H,W).to(idxtendor.device).to(idxtendor.device)
-    colors=colors[1:]
+from core import save, addvalue
+from loss import DiceLoss, FocalLoss
+from own import MulticlassCrackDataset as Dataset
+from unet import UNet, wrapped_UNet
+# from torch.utils.data import DataLoader
+from utils import miouf,prmaper
+
+
+def setcolor(idxtendor, colors):
+    assert idxtendor.max() + 1 <= len(colors)
+    B, H, W = idxtendor.shape
+    colimg = torch.zeros(B, 3, H, W).to(idxtendor.device).to(idxtendor.device)
+    colors = colors[1:]
     for b in range(B):
-        for idx,color in enumerate(colors,1):
-            colimg[b,:,idxtendor[b]==idx]=(color.view(3,1)).to(idxtendor.device).float()
+        for idx, color in enumerate(colors, 1):
+            colimg[b, :, idxtendor[b] == idx] = (color.view(3, 1)).to(idxtendor.device).float()
     return colimg
+
+
 def main(args):
-    ##makedirs(args)
-    ##snapshotargs(args)
     device = torch.device("cpu" if not torch.cuda.is_available() else args.device)
     print(device)
-    #loader_train, loader_valid = data_loaders(args)
-    #loaders = {"train": loader_train, "valid": loader_valid}
-    dataset=Dataset(args.rawfolder,args.maskfolder)
-    k_shot=int(len(dataset)*0.8) if args.k_shot==0 else args.k_shot
-    trainidx=random.sample(range(len(dataset)),k=k_shot)
-    validx=list(set(list(range(len(dataset))))-set(trainidx))
-    traindataset=torch.utils.data.Subset(dataset,trainidx)
-    validdataset=torch.utils.data.Subset(dataset,validx)
-    #traindataset,validdataset=torch.utils.data.random_split(dataset,[n:=int(len(dataset)*0.8),len(dataset)-n])
-    trainloader=torch.utils.data.DataLoader(traindataset,batch_size=args.batch_size,shuffle=True,num_workers=args.workers)
-    validloader=torch.utils.data.DataLoader(validdataset,batch_size=args.batch_size,shuffle=True,num_workers=args.workers)
-    loaders={'train':trainloader,'valid':validloader}
-    unet = UNet(in_channels=dataset.in_channels, out_channels=dataset.out_channels,cutpath=args.cutpath)
+    dataset = Dataset(args.rawfolder, args.maskfolder)
+    k_shot = int(len(dataset) * 0.8) if args.k_shot == 0 else args.k_shot
+    trainidx = random.sample(range(len(dataset)), k=k_shot)
+    validx = list(set(list(range(len(dataset)))) - set(trainidx))
+    traindataset = torch.utils.data.Subset(dataset, trainidx)
+    validdataset = torch.utils.data.Subset(dataset, validx)
+    trainloader = torch.utils.data.DataLoader(traindataset, batch_size=args.batch_size, shuffle=True,
+                                              num_workers=args.workers)
+    validloader = torch.utils.data.DataLoader(validdataset, batch_size=args.batch_size, shuffle=True,
+                                              num_workers=args.workers)
+    loaders = {'train': trainloader, 'valid': validloader}
+    unet = UNet(in_channels=dataset.in_channels, out_channels=dataset.out_channels, cutpath=args.cutpath)
     if args.pretrained:
         unet = torch.hub.load('mateuszbuda/brain-segmentation-pytorch', 'unet',
-                               in_channels=3, out_channels=1, init_features=32, pretrained=True)
-        if dataset.out_channels!=1:
-            unet.conv=nn.Conv2d(in_channels=32,out_channels=dataset.out_channels,kernel_size=1)
+                              in_channels=3, out_channels=1, init_features=32, pretrained=True)
+        unet = wrapped_UNet(unet, 1, dataset.out_channels)
     unet.to(device)
-    dsc_loss = DiceLoss()
-    if args.loss=='DSC':
-        lossf=dsc_loss
-    elif args.loss=='CE':
-        lossf=nn.CrossEntropyLoss()
-    elif args.loss=='Focal':
-        lossf=FocalLoss()
+    if args.loss == 'DSC':
+        lossf = DiceLoss()
+    elif args.loss == 'CE':
+        lossf = nn.CrossEntropyLoss()
+    elif args.loss == 'Focal':
+        lossf = FocalLoss()
+    else :
+        assert False,'set correct loss.'
 
     optimizer = optim.Adam(unet.parameters(), lr=args.lr)
-    writer={}
-    miouf=lambda pred,true,thresh=0.5:((pred>thresh)*(true>thresh)).sum().float()/((pred>thresh)+(true>thresh)).sum().float()
-    def miouf(pred,t_idx,numcls):
-        assert t_idx.max()+1<=numcls
-        #allmask=torch.zeros_like(t_idx).bool()
-        pred=pred.argmax(1).detach()
-        miou=0
-        for clsidx in range(1,numcls):
-            if not (t_idx==clsidx).any():
-                continue
-            iou=(((pred==clsidx) & (t_idx==clsidx)).sum())/(((pred==clsidx) | (t_idx==clsidx)).sum().float())
-            #allmask[t_idx==clsidx]=True
-            miou+=iou/(numcls-1)
-        #assert allmask.float().mean()<1e-3
-        return miou
-    os.makedirs(args.savefolder,exist_ok=True)
+    writer = {}
+
+    os.makedirs(args.savefolder, exist_ok=True)
     print('start train')
     for epoch in range(args.epochs):
-        valid_miou=[]
-        for phase in ["train"]*args.num_train+[ "valid"]:
+        valid_miou = []
+        for phase in ["train"] * args.num_train + ["valid"]:
+            prmap=torch.zeros(len(dataset.clscolor),len(dataset.clscolor))
             if phase == "train":
                 unet.train()
             else:
@@ -101,18 +83,23 @@ def main(args):
                     loss = lossf(y_pred, y_true)
 
                     if phase == "train":
-                        addvalue(writer,'loss:train',loss.item(),epoch)
+                        addvalue(writer, 'loss:train', loss.item(), epoch)
                         loss.backward()
                         optimizer.step()
                     if phase == "valid":
-                        addvalue(writer,'loss:valid',loss.item(),epoch)
-                        miou=miouf(y_pred,y_true,len(dataset.clscolor))
+                        addvalue(writer, 'loss:valid', loss.item(), epoch)
+                        miou = miouf(y_pred, y_true, len(dataset.clscolor))
                         valid_miou.append(miou.item())
-                        addvalue(writer,'acc:miou',miou.item(),epoch)
-                        if i==0:save_image(torch.cat([x,setcolor(y_true,dataset.clscolor),setcolor(y_pred.argmax(1),dataset.clscolor)],dim=2),f'{args.savefolder}/{epoch}.jpg')
+                        prmap+=prmaper(y_pred,y_true,len(dataset.clscolor))
+                        addvalue(writer, 'acc:miou', miou.item(), epoch)
+                        if i == 0: save_image(torch.cat(
+                            [x, setcolor(y_true, dataset.clscolor), setcolor(y_pred.argmax(1), dataset.clscolor)],
+                            dim=2), f'{args.savefolder}/{epoch}.jpg')
             print(f'{epoch=}/{args.epochs}:{phase}:{loss.item():.4f}')
-            if phase=="valid":print(f'test:miou:{np.mean(valid_miou):.4f}')
-        save(epoch,unet,args.savefolder,writer)
+            if phase == "valid":
+                print(f'test:miou:{np.mean(valid_miou):.4f}')
+                print((prmap/(i+1)).int())
+        save(epoch, unet, args.savefolder, writer)
 
 
 if __name__ == "__main__":
