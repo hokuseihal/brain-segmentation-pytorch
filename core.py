@@ -33,7 +33,10 @@ def savedic(dict,fol):
 def save(e,model,fol,dic=None):
     savedmodelpath=f'{fol}/model.pth'
     if dic:
-        savedic(dic,'/'.join(savedmodelpath.split('/')[:-1]))
+        try:
+            savedic(dic,'/'.join(savedmodelpath.split('/')[:-1]))
+        except:
+            print('cannnot save fig.')
     torch.save(model.state_dict(), savedmodelpath)
     with open(f'{fol}/.epoch','w') as f:
         f.write(f'{e}')

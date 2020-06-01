@@ -11,10 +11,10 @@ from torchvision.utils import save_image
 
 from core import save, addvalue
 from loss import DiceLoss, FocalLoss
-from own import MulticlassCrackDataset as Dataset
+from utils.own import MulticlassCrackDataset as Dataset
 from unet import UNet, wrapped_UNet
 # from torch.utils.data import DataLoader
-from utils import miouf,prmaper
+from utils.util import miouf,prmaper
 
 
 def setcolor(idxtendor, colors):
@@ -28,25 +28,28 @@ def setcolor(idxtendor, colors):
     return colimg
 
 
+import glob
 def main(args):
     device = torch.device("cpu" if not torch.cuda.is_available() else args.device)
     print(device)
-    dataset = Dataset(args.rawfolder, args.maskfolder)
-    k_shot = int(len(dataset) * 0.8) if args.k_shot == 0 else args.k_shot
-    trainidx = random.sample(range(len(dataset)), k=k_shot)
-    validx = list(set(list(range(len(dataset)))) - set(trainidx))
-    traindataset = torch.utils.data.Subset(dataset, trainidx)
-    validdataset = torch.utils.data.Subset(dataset, validx)
-    trainloader = torch.utils.data.DataLoader(traindataset, batch_size=args.batch_size, shuffle=True,
+
+    masks=glob.glob(f'{args.maskfolder}/*.jpg')
+    k_shot = int(len(masks) * 0.8) if args.k_shot == 0 else args.k_shot
+    trainmask = random.sample(masks, k=k_shot)
+    validmask = list(set(masks)-set(trainmask))
+    traindataset = Dataset(trainmask,train=True,random=args.random,split=args.split)
+    validdataset=Dataset(validmask,train=False,random=args.random,split=args.split)
+    trainloader = torch.utils.data.DataLoader(traindataset, batch_size=args.batchsize, shuffle=True,
                                               num_workers=args.workers)
-    validloader = torch.utils.data.DataLoader(validdataset, batch_size=args.batch_size, shuffle=True,
+    validloader = torch.utils.data.DataLoader(validdataset, batch_size=args.batchsize, shuffle=True,
                                               num_workers=args.workers)
     loaders = {'train': trainloader, 'valid': validloader}
-    unet = UNet(in_channels=dataset.in_channels, out_channels=dataset.out_channels, cutpath=args.cutpath)
+    unet = UNet(in_channels=traindataset.in_channels, out_channels=traindataset.out_channels, cutpath=args.cutpath)
     if args.pretrained:
         unet = torch.hub.load('mateuszbuda/brain-segmentation-pytorch', 'unet',
                               in_channels=3, out_channels=1, init_features=32, pretrained=True)
-        unet = wrapped_UNet(unet, 1, dataset.out_channels)
+        unet = wrapped_UNet(unet, 1, traindataset.out_channels)
+    if args.saveimg:unet.savefolder=args.savefolder
     unet.to(device)
     if args.loss == 'DSC':
         lossf = DiceLoss()
@@ -65,7 +68,7 @@ def main(args):
     for epoch in range(args.epochs):
         valid_miou = []
         for phase in ["train"] * args.num_train + ["valid"]:
-            prmap=torch.zeros(len(dataset.clscolor),len(dataset.clscolor))
+            prmap=torch.zeros(len(traindataset.clscolor),len(traindataset.clscolor))
             if phase == "train":
                 unet.train()
             else:
@@ -74,7 +77,6 @@ def main(args):
             for i, data in enumerate(loaders[phase]):
                 x, y_true = data
                 x, y_true = x.to(device), y_true.to(device)
-
                 optimizer.zero_grad()
 
                 with torch.set_grad_enabled(phase == "train"):
@@ -82,18 +84,17 @@ def main(args):
 
                     loss = lossf(y_pred, y_true)
 
+                    addvalue(writer, f'loss:{phase}', loss.item(), epoch)
                     if phase == "train":
-                        addvalue(writer, 'loss:train', loss.item(), epoch)
                         loss.backward()
                         optimizer.step()
                     if phase == "valid":
-                        addvalue(writer, 'loss:valid', loss.item(), epoch)
-                        miou = miouf(y_pred, y_true, len(dataset.clscolor))
-                        valid_miou.append(miou.item())
-                        prmap+=prmaper(y_pred,y_true,len(dataset.clscolor))
-                        addvalue(writer, 'acc:miou', miou.item(), epoch)
+                        miou = miouf(y_pred, y_true, len(traindataset.clscolor)).item()
+                        valid_miou+=[miou]
+                        prmap+=prmaper(y_pred,y_true,len(traindataset.clscolor))
+                        addvalue(writer, 'acc:miou', miou, epoch)
                         if i == 0: save_image(torch.cat(
-                            [x, setcolor(y_true, dataset.clscolor), setcolor(y_pred.argmax(1), dataset.clscolor)],
+                            [x, setcolor(y_true, traindataset.clscolor), setcolor(y_pred.argmax(1), traindataset.clscolor)],
                             dim=2), f'{args.savefolder}/{epoch}.jpg')
             print(f'{epoch=}/{args.epochs}:{phase}:{loss.item():.4f}')
             if phase == "valid":
@@ -107,9 +108,9 @@ if __name__ == "__main__":
         description="Training U-Net model for segmentation of brain MRI"
     )
     parser.add_argument(
-        "--batch-size",
+        "--batchsize",
         type=int,
-        default=8,
+        default=16,
         help="input batch size for training (default: 8)",
     )
     parser.add_argument(
@@ -214,5 +215,22 @@ if __name__ == "__main__":
         '--loss',
         default='CE',
     )
+    parser.add_argument(
+        '--split',
+        type=int,
+        default=1
+    )
+    parser.add_argument(
+        '--random',
+        default=False,
+        action='store_true'
+    )
+    parser.add_argument(
+        '--saveimg',
+        default=False,
+        action='store_true'
+    )
     args = parser.parse_args()
+    args.num_train=args.split
+    args.epochs*=args.split
     main(args)
