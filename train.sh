@@ -2,7 +2,8 @@
 for split in 1 2 4 8;do
   for random in '' '--random';do
     for pretrained in '' '--pretrained';do
-      python3 train.py --split $split $random $pretrained --savefolder data/split${split}${random}${pretrained}
+      python3 train.py --split $split $random $pretrained --savefolder data/split${split}${random}${pretrained} --bathsize 32
+      echo python3 train.py --split $split $random $pretrained --savefolder data/split${split}${random}${pretrained} --bathsize 32
     done
   done
 done
