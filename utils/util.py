@@ -2,7 +2,7 @@ import torch
 def miouf(pred,t_idx,numcls):
     with torch.no_grad():
         pred=pred.argmax(1)
-        miou=0
+        miou=torch.zeros(1)
         for clsidx in range(1,numcls):
             if not (t_idx==clsidx).any():
                 continue
