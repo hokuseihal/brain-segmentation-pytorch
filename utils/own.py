@@ -1,6 +1,6 @@
 import torch
 import numpy as np
-from torchvision.transforms import Resize,ToTensor,Compose,Grayscale,ToPILImage
+from torchvision.transforms import Resize,ToTensor,Compose,Grayscale,ToPILImage,ColorJitter
 from utils.augmentation import Crops
 
 import glob
@@ -38,7 +38,7 @@ class MulticlassCrackDataset(torch.utils.data.Dataset):
         self.in_channels=3
         self.out_channels=3
         self.clscolor=torch.tensor(clscolor)/255
-        self.transform=transform if transform is not None else Compose([Resize((256,256)),ToTensor()])
+        self.transform=transform if transform is not None else Compose([Resize((256,256)),ColorJitter(),ToTensor()])
         self.crops=Crops(self)
         self.random=random
         self.split=split
@@ -67,6 +67,9 @@ class MulticlassCrackDataset(torch.utils.data.Dataset):
             else:
                 self.shape=(W//self.split,H//self.split)
         sample=self.crops({'image':img,'mask':mask,'posidx':posidx})
+        # sample['image'].show()
+        # sample['mask'].show()
+        # exit()
         img=self.transform(sample['image'])
         immask=binary(self.transform(sample['mask']))
 

@@ -28,6 +28,7 @@ def savedic(dict,fol):
         axdic[key].legend()
     #fig.legend()
     fig.savefig(f'{fol}/graphs.png')
+    plt.close()
     with open(f'{fol}/data.pkl','wb') as f:
         pickle.dump(dict,f)
 
@@ -38,7 +39,19 @@ def save(e,model,fol,dic=None):
     torch.save(model.state_dict(), savedmodelpath)
     with open(f'{fol}/.epoch','w') as f:
         f.write(f'{e}')
-
+import os
+def load(folder):
+    with open(f'{folder}/data.pkl','rb') as dataf:
+       writer= pickle.load(dataf)
+    with open(f'{folder}/.epoch','r') as epochf:
+        epoch=int(epochf.readline())
+    return writer,epoch,f'{folder}/model.pth'
+def load_check(folder):
+    if not os.path.exists(f'{folder}/model.pth'):
+        print('You want to load previous session, but not saved')
+        return False
+    else:
+        return True
 def savefig(pklpath):
     with open(pklpath,'rb') as f:
         writer=pickle.load(f)

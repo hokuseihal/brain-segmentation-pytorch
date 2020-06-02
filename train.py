@@ -1,4 +1,5 @@
 import argparse
+
 import os
 import random
 from multiprocessing import cpu_count
@@ -9,7 +10,7 @@ import torch.nn as nn
 import torch.optim as optim
 from torchvision.utils import save_image
 
-from core import save, addvalue
+from core import save, addvalue,load,load_check
 from loss import DiceLoss, FocalLoss
 from utils.own import MulticlassCrackDataset as Dataset
 from unet import UNet, wrapped_UNet
@@ -49,8 +50,14 @@ def main(args):
         unet = torch.hub.load('mateuszbuda/brain-segmentation-pytorch', 'unet',
                               in_channels=3, out_channels=1, init_features=32, pretrained=True)
         unet = wrapped_UNet(unet, 1, traindataset.out_channels)
-    if args.saveimg:unet.savefolder=args.savefolder
+    writer = {}
+    preepoch=0
+    if args.resume and load_check(args.savefolder):
+        writer,preepoch,modelpath=load(args.savefolder)
+        unet.load_state_dict(torch.load(modelpath))
+        print('load model')
     unet.to(device)
+    if args.saveimg:unet.savefolder=args.savefolder
     if args.loss == 'DSC':
         lossf = DiceLoss()
     elif args.loss == 'CE':
@@ -61,11 +68,10 @@ def main(args):
         assert False,'set correct loss.'
 
     optimizer = optim.Adam(unet.parameters(), lr=args.lr)
-    writer = {}
 
     os.makedirs(args.savefolder, exist_ok=True)
     print('start train')
-    for epoch in range(args.epochs):
+    for epoch in range(preepoch,args.epochs):
         valid_miou = []
         for phase in ["train"] * args.num_train + ["valid"]:
             prmap=torch.zeros(len(traindataset.clscolor),len(traindataset.clscolor))
@@ -229,6 +235,11 @@ if __name__ == "__main__":
         '--saveimg',
         default=False,
         action='store_true'
+    )
+    parser.add_argument(
+        '--resume',
+        default=True,
+        action='store_false'
     )
     args = parser.parse_args()
     args.num_train=args.split

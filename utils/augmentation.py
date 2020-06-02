@@ -23,7 +23,9 @@ class Crops(object):
             y0=H//s*posh
             width=W//s
             height=H//s
-
+        # print(posidx)
+        # print(img.size)
+        # print(x0,y0,width,height)
         img=TF.crop(img,y0,x0,height,width)
         # print(x0,y0,width,height)
         mask=TF.crop(mask,y0,x0,height,width)
