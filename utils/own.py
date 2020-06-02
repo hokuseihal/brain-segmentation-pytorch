@@ -44,6 +44,7 @@ class MulticlassCrackDataset(torch.utils.data.Dataset):
         self.split=split
     def __len__(self):
         if self.train:
+            # return 64
             return len(self.raw)
         else:
             return len(self.raw)*self.split**2
@@ -57,6 +58,7 @@ class MulticlassCrackDataset(torch.utils.data.Dataset):
             # print('pos',item,posimg,posw,posh)
             return posimg,(posw,posh,self.split)
     def __getitem__(self, item):
+        # print(self.raw[item])
         item,posidx=self.getposition(item)
         img=Image.open(self.raw[item])
         mask=Image.open(self.mask[item])

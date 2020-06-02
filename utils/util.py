@@ -1,5 +1,7 @@
 import torch
-def miouf(pred,t_idx,numcls):
+def miouf(_pred,_t_idx,numcls):
+    pred=_pred.clone()
+    t_idx=_t_idx.clone()
     with torch.no_grad():
         pred=pred.argmax(1)
         miou=torch.zeros(1)
@@ -10,7 +12,9 @@ def miouf(pred,t_idx,numcls):
             miou+=iou/(numcls-1)
         return miou
 
-def prmaper(pred,t_idx,numcls):
+def prmaper(_pred,_t_idx,numcls):
+    pred=_pred.clone()
+    t_idx=_t_idx.clone()
     with torch.no_grad():
         pred=pred.argmax(1)
         prmap=torch.zeros(numcls,numcls)

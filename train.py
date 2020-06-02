@@ -1,7 +1,7 @@
 import argparse
-
 import os
 import random
+import glob
 from multiprocessing import cpu_count
 
 import numpy as np
@@ -10,12 +10,11 @@ import torch.nn as nn
 import torch.optim as optim
 from torchvision.utils import save_image
 
-from core import save, addvalue,load,load_check
+from core import save, addvalue, load, load_check, saveworter
 from loss import DiceLoss, FocalLoss
-from utils.own import MulticlassCrackDataset as Dataset
 from unet import UNet, wrapped_UNet
-# from torch.utils.data import DataLoader
-from utils.util import miouf,prmaper
+from utils.own import MulticlassCrackDataset as Dataset
+from utils.util import miouf, prmaper
 
 
 def setcolor(idxtendor, colors):
@@ -29,53 +28,60 @@ def setcolor(idxtendor, colors):
     return colimg
 
 
-import glob
+
+
 def main(args):
     device = torch.device("cpu" if not torch.cuda.is_available() else args.device)
     print(device)
 
-    masks=glob.glob(f'{args.maskfolder}/*.jpg')
+    masks = glob.glob(f'{args.maskfolder}/*.jpg')
     k_shot = int(len(masks) * 0.8) if args.k_shot == 0 else args.k_shot
     trainmask = random.sample(masks, k=k_shot)
-    validmask = list(set(masks)-set(trainmask))
-    traindataset = Dataset(trainmask,train=True,random=args.random,split=args.split)
-    validdataset=Dataset(validmask,train=False,random=args.random,split=args.split)
+    validmask = list(set(masks) - set(trainmask))
+
+    unet = UNet(in_channels=3, out_channels=3, cutpath=args.cutpath)
+    if args.pretrained:
+        unet = torch.hub.load('mateuszbuda/brain-segmentation-pytorch', 'unet',
+                              in_channels=3, out_channels=1, init_features=32, pretrained=True)
+        unet = wrapped_UNet(unet, 1, 3)
+    writer = {}
+    worter = {}
+    preepoch = 0
+    if args.resume and load_check(args.savefolder):
+        saved = load(args.savefolder)
+        writer, preepoch, modelpath, worter = saved['writer'], saved['epoch'], saved['modelpath'], saved['worter']
+        trainmask, validmask = worter['trainmask'], worter['validmask']
+        unet.load_state_dict(torch.load(modelpath))
+        print('load model')
+    unet.to(device)
+    saveworter(worter, 'trainmask', trainmask)
+    saveworter(worter, 'validmask', validmask)
+    traindataset = Dataset(trainmask, train=True, random=args.random, split=args.split)
+    validdataset = Dataset(validmask, train=False, random=args.random, split=args.split)
     trainloader = torch.utils.data.DataLoader(traindataset, batch_size=args.batchsize, shuffle=True,
                                               num_workers=args.workers)
     validloader = torch.utils.data.DataLoader(validdataset, batch_size=args.batchsize, shuffle=True,
                                               num_workers=args.workers)
     loaders = {'train': trainloader, 'valid': validloader}
-    unet = UNet(in_channels=traindataset.in_channels, out_channels=traindataset.out_channels, cutpath=args.cutpath)
-    if args.pretrained:
-        unet = torch.hub.load('mateuszbuda/brain-segmentation-pytorch', 'unet',
-                              in_channels=3, out_channels=1, init_features=32, pretrained=True)
-        unet = wrapped_UNet(unet, 1, traindataset.out_channels)
-    writer = {}
-    preepoch=0
-    if args.resume and load_check(args.savefolder):
-        writer,preepoch,modelpath=load(args.savefolder)
-        unet.load_state_dict(torch.load(modelpath))
-        print('load model')
-    unet.to(device)
-    if args.saveimg:unet.savefolder=args.savefolder
+    if args.saveimg: unet.savefolder = args.savefolder
     if args.loss == 'DSC':
         lossf = DiceLoss()
     elif args.loss == 'CE':
         lossf = nn.CrossEntropyLoss()
     elif args.loss == 'Focal':
         lossf = FocalLoss()
-    else :
-        assert False,'set correct loss.'
+    else:
+        assert False, 'set correct loss.'
 
     optimizer = optim.Adam(unet.parameters(), lr=args.lr)
 
     os.makedirs(args.savefolder, exist_ok=True)
     print('start train')
-    for epoch in range(preepoch,args.epochs):
-        losslist=[]
+    for epoch in range(preepoch, args.epochs):
+        losslist = []
         valid_miou = []
         for phase in ["train"] * args.num_train + ["valid"]:
-            prmap=torch.zeros(len(traindataset.clscolor),len(traindataset.clscolor))
+            prmap = torch.zeros(len(traindataset.clscolor), len(traindataset.clscolor))
             if phase == "train":
                 unet.train()
             else:
@@ -90,25 +96,26 @@ def main(args):
                     y_pred = unet(x)
 
                     loss = lossf(y_pred, y_true)
-                    losslist+=[loss.item()]
+                    losslist += [loss.item()]
                     if phase == "train":
                         loss.backward()
                         optimizer.step()
                     if phase == "valid":
                         miou = miouf(y_pred, y_true, len(traindataset.clscolor)).item()
-                        valid_miou+=[miou]
-                        prmap+=prmaper(y_pred,y_true,len(traindataset.clscolor))
+                        valid_miou += [miou]
+                        prmap += prmaper(y_pred, y_true, len(traindataset.clscolor))
                         if i == 0:
                             save_image(torch.cat(
-                                [x, setcolor(y_true, traindataset.clscolor), setcolor(y_pred.argmax(1), traindataset.clscolor)],
+                                [x, setcolor(y_true, traindataset.clscolor),
+                                 setcolor(y_pred.argmax(1), traindataset.clscolor)],
                                 dim=2), f'{args.savefolder}/{epoch}.jpg')
             addvalue(writer, f'loss:{phase}', np.mean(losslist), epoch)
             print(f'{epoch=}/{args.epochs}:{phase}:{np.mean(losslist):.4f}')
             if phase == "valid":
                 print(f'test:miou:{np.mean(valid_miou):.4f}')
                 addvalue(writer, 'acc:miou', np.mean(valid_miou), epoch)
-                print((prmap/(i+1)).int())
-        save(epoch, unet, args.savefolder, writer)
+                print((prmap / (i + 1)).int())
+        save(epoch, unet, args.savefolder, writer, worter)
 
 
 if __name__ == "__main__":
@@ -118,7 +125,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--batchsize",
         type=int,
-        default=16,
+        default=8,
         help="input batch size for training (default: 8)",
     )
     parser.add_argument(
@@ -136,53 +143,14 @@ if __name__ == "__main__":
     parser.add_argument(
         "--device",
         type=str,
-        default="cuda:0",
-        help="device for training (default: cuda:0)",
+        default="cuda",
+        help="device for training (default: cuda)",
     )
     parser.add_argument(
         "--workers",
         type=int,
         default=cpu_count(),
         help="number of workers for data loading (default: max)",
-    )
-    parser.add_argument(
-        "--vis-images",
-        type=int,
-        default=200,
-        help="number of visualization images to save in log file (default: 200)",
-    )
-    parser.add_argument(
-        "--vis-freq",
-        type=int,
-        default=10,
-        help="frequency of saving images to log file (default: 10)",
-    )
-    parser.add_argument(
-        "--weights", type=str, default="./weights", help="folder to save weights"
-    )
-    parser.add_argument(
-        "--logs", type=str, default="./logs", help="folder to save logs"
-    )
-    parser.add_argument(
-        "--images", type=str, default="./kaggle_3m", help="root folder with images"
-    )
-    parser.add_argument(
-        "--image-size",
-        type=int,
-        default=256,
-        help="target input image size (default: 256)",
-    )
-    parser.add_argument(
-        "--aug-scale",
-        type=int,
-        default=0.05,
-        help="scale factor range for augmentation (default: 0.05)",
-    )
-    parser.add_argument(
-        "--aug-angle",
-        type=int,
-        default=15,
-        help="rotation angle range in degrees for augmentation (default: 15)",
     )
     parser.add_argument(
         "--pretrained",
@@ -206,7 +174,7 @@ if __name__ == "__main__":
     )
     parser.add_argument(
         "--savefolder",
-        default='data/tmp',
+        default='tmp',
         type=str
     )
     parser.add_argument(
@@ -240,11 +208,11 @@ if __name__ == "__main__":
     )
     parser.add_argument(
         '--resume',
-        default=True,
-        action='store_false'
+        default=False,
+        action='store_true'
     )
     args = parser.parse_args()
-    args.num_train=args.split
-    args.epochs*=args.split
-    args.savefolder=f'data/{args.savefolder}'
+    args.num_train = args.split
+    args.epochs *= args.split
+    args.savefolder = f'data/{args.savefolder}'
     main(args)
