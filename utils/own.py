@@ -84,7 +84,10 @@ class MulticlassCrackDataset(torch.utils.data.Dataset):
         assert clsmask.shape==(256,256)
         assert img.shape==(3,256,256)
         return img,clsmask
+import pickle
 if __name__=='__main__':
-    dataset=MulticlassCrackDataset('../data/owncrack/scene/image','../data/owncrack/scene/mask',random=False,train=False)
-    for i in range(32):
-        dataset[i]
+    dataset=MulticlassCrackDataset(glob.glob('../data/owncrack/scene/mask/*'),random=False,train=True)
+    _=dataset[0]
+    with open('../tmpcrack/preout.pkl','rb') as f:
+        preout=pickle.load(f)
+    print((preout[1]!=_[1]).sum())
