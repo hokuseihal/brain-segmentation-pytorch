@@ -99,6 +99,7 @@ def main(args):
 
                     loss = lossf(y_pred, y_true)
                     losslist += [loss.item()]
+                    print(loss)
                     if phase == "train":
                         loss.backward()
                         optimizer.step()

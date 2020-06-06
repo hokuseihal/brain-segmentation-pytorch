@@ -41,21 +41,28 @@ class PositionJitter(object):
     def __call__(self, samples):
         img=samples['image']
         mask=samples['mask']
-        C,H,W=img.shape
-        if random.randint(0,1)==0 or True:
+        Cimg,H,W=img.shape
+        Cmask,H,W=mask.shape
+        flag=False
+        if random.randint(0,1)==0:
             img=img.permute(0,2,1)
             mask=mask.permute(0,2,1)
+            flag=True
         for i in range(0,H,self.block):
             _jit=random.randint(0,self.jit)
             if _jit!=0:
                 if random.randint(0,1)==0:
-                    img[:,i]=torch.cat([img[:,i,:-_jit],torch.zeros(C,_jit)],dim=-1)
-                    mask[:,i]=torch.cat([mask[:,i,:-_jit],torch.zeros(C,_jit)],dim=-1)
+                    img[:,i]=torch.cat([img[:,i,_jit:],torch.zeros(Cimg,_jit)],dim=-1)
+                    mask[:,i]=torch.cat([mask[:,i,_jit:],torch.zeros(Cmask,_jit)],dim=-1)
                 else:
-                    img[:,i]=torch.cat([torch.zeros(C,_jit),img[:,i,_jit:]],dim=-1)
-                    mask[:,i]=torch.cat([torch.zeros(C,_jit),mask[:,i,_jit:]],dim=-1)
-        img=img.permute(0,2,1)
-        mask=mask.permute(0,2,1)
+                    img[:,i]=torch.cat([torch.zeros(Cimg,_jit),img[:,i,:-_jit]],dim=-1)
+                    mask[:,i]=torch.cat([torch.zeros(Cmask,_jit),mask[:,i,:-_jit]],dim=-1)
+        if flag:
+            img=img.permute(0,2,1)
+            mask=mask.permute(0,2,1)
         samples['image']=img
         samples['mask']=mask
-        return mask
+        # from torchvision.transforms import ToPILImage
+        # ToPILImage()(img).show()
+        # exit()
+        return samples
