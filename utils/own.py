@@ -37,13 +37,19 @@ class MulticlassCrackDataset(torch.utils.data.Dataset):
         assert len(self.mask)==len(self.raw)
         self.in_channels=3
         self.out_channels=3
+        self.shape=(256,256)
         self.clscolor=torch.tensor(clscolor)/255
-        self.transform=transform if transform is not None else Compose([Resize((256,256)),ColorJitter(),ToTensor()])
+        self.transform=transform if transform is not None else Compose([Resize(self.shape),ColorJitter(),ToTensor()])
         self.random=random
         self.pretransforms=Compose([Crops(self)])
         self.posttransforms=Compose([PositionJitter(args.jitter,args.jitter_block)]) if not train else Compose([])
         # self.posttransforms=Compose([])
         self.split=split
+    def resize(self):
+        print(self.shape,'->',end='')
+        sz=64*random.randint(128//64,512//64)
+        self.shape=(sz,sz)
+        print(self.shape)
     def __len__(self):
         if self.train:
             return len(self.raw)
@@ -84,8 +90,6 @@ class MulticlassCrackDataset(torch.utils.data.Dataset):
             allmask[(mask==color).sum(0)==3]=True
 
         assert (~allmask).float().mean()<1e-3
-        assert clsmask.shape==(256,256)
-        assert img.shape==(3,256,256)
         return img,clsmask
 import pickle
 if __name__=='__main__':
