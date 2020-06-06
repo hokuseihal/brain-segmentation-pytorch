@@ -29,7 +29,7 @@ class CrackDataset(torch.utils.data.Dataset):
         return self.transform(imraw),self.transform(immask)
 
 class MulticlassCrackDataset(torch.utils.data.Dataset):
-    def __init__(self,masks,transform=None,clscolor=[[0,0,0],[255,255,255],[0,255,0]],random=False,split=1,train=True):
+    def __init__(self,masks,transform=None,clscolor=[[0,0,0],[255,255,255],[0,255,0]],random=False,split=1,train=True,args=None):
         assert split in {1,2,4,8,16}
         self.train=train
         self.mask=masks
@@ -41,7 +41,7 @@ class MulticlassCrackDataset(torch.utils.data.Dataset):
         self.transform=transform if transform is not None else Compose([Resize((256,256)),ColorJitter(),ToTensor()])
         self.random=random
         self.pretransforms=Compose([Crops(self)])
-        self.posttransforms=Compose([PositionJitter(3,1)])
+        self.posttransforms=Compose([PositionJitter(args.jitter,args.jitter_block)]) if not train else Compose([])
         # self.posttransforms=Compose([])
         self.split=split
     def __len__(self):

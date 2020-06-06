@@ -56,8 +56,8 @@ def main(args):
     unet.to(device)
     saveworter(worter, 'trainmask', trainmask)
     saveworter(worter, 'validmask', validmask)
-    traindataset = Dataset(trainmask, train=True, random=args.random, split=args.split)
-    validdataset = Dataset(validmask, train=False, random=args.random, split=args.split)
+    traindataset = Dataset(trainmask, train=True, random=args.random, split=args.split,args=args)
+    validdataset = Dataset(validmask, train=False, random=args.random, split=args.split,args=args)
     trainloader = torch.utils.data.DataLoader(traindataset, batch_size=args.batchsize, shuffle=True,
                                               num_workers=args.workers)
     validloader = torch.utils.data.DataLoader(validdataset, batch_size=args.batchsize, shuffle=True,
@@ -218,6 +218,16 @@ if __name__ == "__main__":
         '--resize',
         default=False,
         action='store_true'
+    )
+    parser.add_argument(
+        '--jitter',
+        default=3,
+        type=int
+    )
+    parser.add_argument(
+        '--jitter_block',
+        default=1,
+        type=int
     )
     args = parser.parse_args()
     args.num_train = args.split
