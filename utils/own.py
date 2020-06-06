@@ -1,7 +1,7 @@
 import torch
 import numpy as np
 from torchvision.transforms import Resize,ToTensor,Compose,Grayscale,ToPILImage,ColorJitter
-from utils.augmentation import Crops
+from utils.augmentation import Crops,PositionJitter
 
 import glob
 import random
@@ -29,6 +29,10 @@ class CrackDataset(torch.utils.data.Dataset):
         return self.transform(imraw),self.transform(immask)
 
 class MulticlassCrackDataset(torch.utils.data.Dataset):
+    def resize(self):
+        sz=random.randint(128//32,512//32)*32
+        self.shape=(sz,sz)
+
     def __init__(self,masks,transform=None,clscolor=[[0,0,0],[255,255,255],[0,255,0]],random=False,split=1,train=True):
         assert split in {1,2,4,8,16}
         self.train=train
@@ -37,9 +41,11 @@ class MulticlassCrackDataset(torch.utils.data.Dataset):
         assert len(self.mask)==len(self.raw)
         self.in_channels=3
         self.out_channels=3
+        self.shape=(256,256)
         self.clscolor=torch.tensor(clscolor)/255
-        self.transform=transform if transform is not None else Compose([Resize((256,256)),ColorJitter(),ToTensor()])
-        self.crops=Crops(self)
+        self.transform=transform if transform is not None else Compose([Resize(self.shape),ColorJitter(),ToTensor()])
+        self.pretransforms=Compose([Crops(self)])
+        self.posttransforms=Compose([PositionJitter(1,1)])
         self.random=random
         self.split=split
     def __len__(self):
@@ -68,19 +74,21 @@ class MulticlassCrackDataset(torch.utils.data.Dataset):
                 self.shape=(random.randint(W//self.split,W),random.randint(H//self.split,H))
             else:
                 self.shape=(W//self.split,H//self.split)
-        sample=self.crops({'image':img,'mask':mask,'posidx':posidx})
+        sample=self.pretransforms({'image':img,'mask':mask,'posidx':posidx})
         # sample['image'].show()
         # sample['mask'].show()
         # exit()
         img=self.transform(sample['image'])
-        immask=binary(self.transform(sample['mask']))
+        mask=binary(self.transform(sample['mask']))
+        sample=self.posttransforms({'image':img,'mask':mask})
+        img,mask=sample['image'],mask['mask']
 
-        allmask=torch.zeros_like(immask[0]).bool()
+        allmask=torch.zeros_like(mask[0]).bool()
         clsmask=torch.zeros_like(allmask).long()
         for clsidx,color in enumerate(self.clscolor):
             color=color.view(3,1,1)
-            clsmask[(immask==color).sum(0)==3]=clsidx
-            allmask[(immask==color).sum(0)==3]=True
+            clsmask[(mask==color).sum(0)==3]=clsidx
+            allmask[(mask==color).sum(0)==3]=True
 
         assert (~allmask).float().mean()<1e-3
         assert clsmask.shape==(256,256)

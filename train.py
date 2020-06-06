@@ -84,6 +84,8 @@ def main(args):
             prmap = torch.zeros(len(traindataset.clscolor), len(traindataset.clscolor))
             if phase == "train":
                 unet.train()
+                if args.resize:
+                    traindataset.resize()
             else:
                 unet.eval()
 
@@ -208,6 +210,11 @@ if __name__ == "__main__":
     )
     parser.add_argument(
         '--resume',
+        default=False,
+        action='store_true'
+    )
+    parser.add_argument(
+        '--resize',
         default=False,
         action='store_true'
     )
