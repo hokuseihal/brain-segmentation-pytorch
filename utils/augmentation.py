@@ -58,8 +58,4 @@ class PositionJitter(object):
         mask=mask.permute(0,2,1)
         samples['image']=img
         samples['mask']=mask
-        from torchvision.transforms import ToPILImage
-        ToPILImage()(img).show()
-        ToPILImage()(mask).show()
-        exit()
         return mask
