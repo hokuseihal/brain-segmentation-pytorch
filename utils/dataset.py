@@ -42,7 +42,7 @@ class MulticlassCrackDataset(torch.utils.data.Dataset):
         self.transform=transform if transform is not None else Compose([Resize(self.shape),ColorJitter(),ToTensor()])
         self.random=random
         self.pretransforms=Compose([Crops(self)])
-        self.posttransforms=Compose([PositionJitter(args.jitter,args.jitter_block)]) if train else Compose([])
+        self.posttransforms=Compose([PositionJitter(args.jitter,args.jitter_block)]) if train and args.jitter>=0 else Compose([])
         # self.posttransforms=Compose([])
         self.split=split
         self.ret_item=False
