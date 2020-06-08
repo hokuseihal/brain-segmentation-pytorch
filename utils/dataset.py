@@ -42,9 +42,10 @@ class MulticlassCrackDataset(torch.utils.data.Dataset):
         self.transform=transform if transform is not None else Compose([Resize(self.shape),ColorJitter(),ToTensor()])
         self.random=random
         self.pretransforms=Compose([Crops(self)])
-        self.posttransforms=Compose([PositionJitter(args.jitter,args.jitter_block)]) if not train else Compose([])
+        self.posttransforms=Compose([PositionJitter(args.jitter,args.jitter_block)]) if train else Compose([])
         # self.posttransforms=Compose([])
         self.split=split
+        self.ret_item=False
     def resize(self):
         print(self.shape,'->',end='')
         sz=64*random.randint(128//64,512//64)
@@ -90,6 +91,8 @@ class MulticlassCrackDataset(torch.utils.data.Dataset):
             allmask[(mask==color).sum(0)==3]=True
 
         assert (~allmask).float().mean()<1e-3
+        if self.ret_item:
+            return img,clsmask,(item,posidx)
         return img,clsmask
 import pickle
 if __name__=='__main__':
