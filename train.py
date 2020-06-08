@@ -220,7 +220,7 @@ if __name__ == "__main__":
     )
     parser.add_argument(
         '--jitter',
-        default=3,
+        default=0,
         type=int
     )
     parser.add_argument(
