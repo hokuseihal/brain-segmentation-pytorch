@@ -58,9 +58,9 @@ def main(args):
     saveworter(worter, 'validmask', validmask)
     traindataset = Dataset(trainmask, train=True, random=args.random, split=args.split,args=args)
     validdataset = Dataset(validmask, train=False, random=args.random, split=args.split,args=args)
-    trainloader = torch.utils.data.DataLoader(traindataset, batch_size=args.batchsize, shuffle=True,
+    trainloader = torch.utils.data.DataLoader(traindataset, batch_size=args.batchsize//args.subdivisions, shuffle=True,
                                               num_workers=args.workers)
-    validloader = torch.utils.data.DataLoader(validdataset, batch_size=args.batchsize, shuffle=True,
+    validloader = torch.utils.data.DataLoader(validdataset, batch_size=args.batchsize//args.subdivisions, shuffle=True,
                                               num_workers=args.workers)
     loaders = {'train': trainloader, 'valid': validloader}
     if args.saveimg: unet.savefolder = args.savefolder
@@ -89,10 +89,9 @@ def main(args):
             else:
                 unet.eval()
 
-            for i, data in enumerate(loaders[phase]):
+            for batchidx, data in enumerate(loaders[phase]):
                 x, y_true = data
                 x, y_true = x.to(device), y_true.to(device)
-                optimizer.zero_grad()
 
                 with torch.set_grad_enabled(phase == "train"):
                     y_pred = unet(x)
@@ -100,13 +99,17 @@ def main(args):
                     loss = lossf(y_pred, y_true)
                     losslist += [loss.item()]
                     if phase == "train":
-                        loss.backward()
-                        optimizer.step()
+                        (loss/args.subdivisions).backward()
+                        print(loss.item())
+                        if (batchidx+1)%args.subdivisions==0:
+                            print('step')
+                            optimizer.step()
+                            optimizer.zero_grad()
                     if phase == "valid":
                         miou = miouf(y_pred, y_true, len(traindataset.clscolor)).item()
                         valid_miou += [miou]
                         prmap += prmaper(y_pred, y_true, len(traindataset.clscolor))
-                        if i == 0:
+                        if batchidx == 0:
                             save_image(torch.cat(
                                 [x, setcolor(y_true, traindataset.clscolor),
                                  setcolor(y_pred.argmax(1), traindataset.clscolor)],
@@ -116,7 +119,7 @@ def main(args):
             if phase == "valid":
                 print(f'test:miou:{np.nanmean(valid_miou):.4f}')
                 addvalue(writer, 'acc:miou', np.nanmean(valid_miou), epoch)
-                print((prmap / (i + 1)).int())
+                print((prmap / (batchidx + 1)).int())
         save(epoch, unet, args.savefolder, writer, worter)
 
 
@@ -225,6 +228,11 @@ if __name__ == "__main__":
     )
     parser.add_argument(
         '--jitter_block',
+        default=1,
+        type=int
+    )
+    parser.add_argument(
+        '--subdivisions',
         default=1,
         type=int
     )
