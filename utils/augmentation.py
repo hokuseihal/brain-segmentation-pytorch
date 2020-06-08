@@ -9,13 +9,13 @@ class Crops(object):
         # print(f'size:{img.size}')
 
         if self.dataset.train:
-            assert len(self.dataset.shape)==2
-            assert type(self.dataset.shape[0])==int
-            assert type(self.dataset.shape[1])==int
+            assert len(self.dataset.cropshape)==2
+            assert type(self.dataset.cropshape[0])==int
+            assert type(self.dataset.cropshape[1])==int
             #random crop
-            x0=random.randint(0,W-self.dataset.shape[0])
-            y0=random.randint(0,H-self.dataset.shape[1])
-            width,height=self.dataset.shape
+            x0=random.randint(0,W-self.dataset.cropshape[0])
+            y0=random.randint(0,H-self.dataset.cropshape[1])
+            width,height=self.dataset.cropshape
         else:
             #postion crop for valid
             posw,posh,s=posidx
@@ -66,3 +66,50 @@ class PositionJitter(object):
         # ToPILImage()(img).show()
         # exit()
         return samples
+import numpy
+from scipy.ndimage.interpolation import map_coordinates
+from scipy.ndimage.filters import gaussian_filter
+from torchvision.transforms import ToPILImage
+import torchvision.transforms.functional as TF
+class Elastic_Distortion(object):
+    """Elastic deformation of images as described in [Simard2003]_.
+    .. [Simard2003] Simard, Steinkraus and Platt, "Best Practices for
+       Convolutional Neural Networks applied to Visual Document Analysis", in
+       Proc. of the International Conference on Document Analysis and
+       Recognition, 2003.
+    """
+    def __init__(self,sigma=6,alpha=None,random_state=None):
+        self.alpha=alpha
+        self.sigma=sigma
+        self.random_state=random_state
+    def __call__(self,sample):
+        if self.random_state is None:
+            random_state = numpy.random.RandomState(None)
+        if self.alpha is None:
+            alpha=random.randint(0,50)
+        sample['image']=sample['image'].numpy()
+        sample['mask']=sample['mask'].numpy()
+        image=sample['image']
+        mask=sample['mask']
+        C,H,W=image.shape
+        shape = (H,W)
+        dx = gaussian_filter((random_state.rand(*shape) * 2 - 1), self.sigma, mode="constant", cval=0) * alpha
+        dy = gaussian_filter((random_state.rand(*shape) * 2 - 1), self.sigma, mode="constant", cval=0) * alpha
+
+        x, y = numpy.meshgrid(numpy.arange(shape[0]), numpy.arange(shape[1]),indexing='ij')
+        for c in range(C):
+            indices = numpy.reshape(x+dy, (-1, 1)), numpy.reshape(y+dx, (-1, 1))
+            sample['image'][c]=map_coordinates(image[c], indices, order=1).reshape(shape)
+            sample['mask'][c]=map_coordinates(mask[c], indices, order=1).reshape(shape)
+        sample['image']=torch.from_numpy(sample['image'])
+        sample['mask']=torch.from_numpy(sample['mask'])
+        # ToPILImage()(sample['image']).show()
+        # ToPILImage()(sample['mask']).show()
+        # exit()
+        return sample
+class Resize(object):
+    def __init__(self,dataset):
+        self.dataset=dataset
+    def __call__(self, img):
+        img=img.resize(self.dataset.shape)
+        return img

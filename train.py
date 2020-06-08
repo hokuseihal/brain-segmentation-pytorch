@@ -236,6 +236,11 @@ if __name__ == "__main__":
         default=1,
         type=int
     )
+    parser.add_argument(
+        '--elastic',
+        default=False,
+        action='store_true'
+    )
     args = parser.parse_args()
     args.num_train = args.split
     args.epochs *= args.split

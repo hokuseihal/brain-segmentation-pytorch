@@ -1,7 +1,7 @@
 import torch
 import numpy as np
-from torchvision.transforms import Resize,ToTensor,Compose,Grayscale,ToPILImage,ColorJitter
-from utils.augmentation import Crops,PositionJitter
+from torchvision.transforms import ToTensor,Compose,Grayscale,ToPILImage,ColorJitter
+from utils.augmentation import Crops,PositionJitter,Elastic_Distortion,Resize
 
 import glob
 import random
@@ -39,13 +39,27 @@ class MulticlassCrackDataset(torch.utils.data.Dataset):
         self.out_channels=3
         self.shape=(256,256)
         self.clscolor=torch.tensor(clscolor)/255
-        self.transform=transform if transform is not None else Compose([Resize(self.shape),ColorJitter(),ToTensor()])
         self.random=random
-        self.pretransforms=Compose([Crops(self)])
-        self.posttransforms=Compose([PositionJitter(args.jitter,args.jitter_block)]) if train and args.jitter>=0 else Compose([])
-        # self.posttransforms=Compose([])
+        _transform=[]
+        _posttransforms=[]
+        _pretransforms=[]
+        _pretransforms+=[Crops(self)]
+        if train :
+            _transform+=[ColorJitter()]
+            if args.jitter >0:
+                _posttransforms+=[PositionJitter(args.jitter,args.jitter_block)]
+            if args.elastic:
+                _posttransforms+=[Elastic_Distortion()]
+        _transform+=[Resize(self),ToTensor()]
+        self.pretransforms=Compose(_pretransforms)
+        self.transform=Compose(_transform)
+        self.posttransforms=Compose(_posttransforms)
         self.split=split
         self.ret_item=False
+        print(f'{self.train=}')
+        print(f'{self.pretransforms=}')
+        print(f'{self.transform=}')
+        print(f'{self.posttransforms=}')
     def resize(self):
         print(self.shape,'->',end='')
         sz=64*random.randint(128//64,512//64)
@@ -63,7 +77,6 @@ class MulticlassCrackDataset(torch.utils.data.Dataset):
             posimg=item//(self.split**2)
             posw=(item%(self.split**2))//self.split
             posh=(item%self.split)
-            # print('pos',item,posimg,posw,posh)
             return posimg,(posw,posh,self.split)
     def __getitem__(self, item):
         item,posidx=self.getposition(item)
@@ -72,9 +85,9 @@ class MulticlassCrackDataset(torch.utils.data.Dataset):
         W,H=img.size
         if self.train:
             if self.random:
-                self.shape=(random.randint(W//self.split,W),random.randint(H//self.split,H))
+                self.cropshape=(random.randint(W//self.split,W),random.randint(H//self.split,H))
             else:
-                self.shape=(W//self.split,H//self.split)
+                self.cropshape=(W//self.split,H//self.split)
         sample=self.pretransforms({'image':img,'mask':mask,'posidx':posidx})
         # sample['image'].show()
         # sample['mask'].show()
@@ -83,16 +96,18 @@ class MulticlassCrackDataset(torch.utils.data.Dataset):
         mask=binary(self.transform(sample['mask']))
         sample=self.posttransforms({'image':img,'mask':mask})
         img,mask=sample['image'],sample['mask']
-        allmask=torch.zeros_like(mask[0]).bool()
+        allmask=torch.zeros(self.shape)
         clsmask=torch.zeros_like(allmask).long()
+        # from torchvision.transforms import ToPILImage
+        # ToPILImage()(img).show()
+        # ToPILImage()(mask).show()
         for clsidx,color in enumerate(self.clscolor):
             color=color.view(3,1,1)
             clsmask[(mask==color).sum(0)==3]=clsidx
-            allmask[(mask==color).sum(0)==3]=True
-
-        assert (~allmask).float().mean()<1e-3
+            allmask[(mask==color).sum(0)==3]=1
         if self.ret_item:
             return img,clsmask,(item,posidx)
+        assert allmask.bool().any()
         return img,clsmask
 import pickle
 if __name__=='__main__':
