@@ -105,7 +105,6 @@ def main(args):
                     if phase == "valid":
                         miou = miouf(y_pred, y_true, len(traindataset.clscolor)).item()
                         valid_miou += [miou]
-                        print(miou)
                         prmap += prmaper(y_pred, y_true, len(traindataset.clscolor))
                         if i == 0:
                             save_image(torch.cat(
