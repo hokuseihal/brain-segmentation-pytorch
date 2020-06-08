@@ -78,9 +78,9 @@ def main(args):
     os.makedirs(args.savefolder, exist_ok=True)
     print('start train')
     for epoch in range(preepoch, args.epochs):
-        losslist = []
-        valid_miou = []
         for phase in ["train"] * args.num_train + ["valid"]:
+            valid_miou = []
+            losslist = []
             prmap = torch.zeros(len(traindataset.clscolor), len(traindataset.clscolor))
             if phase == "train":
                 unet.train()
@@ -99,13 +99,13 @@ def main(args):
 
                     loss = lossf(y_pred, y_true)
                     losslist += [loss.item()]
-                    print(loss)
                     if phase == "train":
                         loss.backward()
                         optimizer.step()
                     if phase == "valid":
                         miou = miouf(y_pred, y_true, len(traindataset.clscolor)).item()
                         valid_miou += [miou]
+                        print(miou)
                         prmap += prmaper(y_pred, y_true, len(traindataset.clscolor))
                         if i == 0:
                             save_image(torch.cat(
@@ -115,8 +115,8 @@ def main(args):
             addvalue(writer, f'loss:{phase}', np.mean(losslist), epoch)
             print(f'{epoch=}/{args.epochs}:{phase}:{np.mean(losslist):.4f}')
             if phase == "valid":
-                print(f'test:miou:{np.mean(valid_miou):.4f}')
-                addvalue(writer, 'acc:miou', np.mean(valid_miou), epoch)
+                print(f'test:miou:{np.nanmean(valid_miou):.4f}')
+                addvalue(writer, 'acc:miou', np.nanmean(valid_miou), epoch)
                 print((prmap / (i + 1)).int())
         save(epoch, unet, args.savefolder, writer, worter)
 
