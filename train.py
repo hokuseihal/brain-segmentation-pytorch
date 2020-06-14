@@ -94,9 +94,18 @@ def main(args):
                 x, y_true = x.to(device), y_true.to(device)
 
                 with torch.set_grad_enabled(phase == "train"):
-                    y_pred = unet(x)
-
-                    loss = lossf(y_pred, y_true)
+                    if args.mixup and phase=='train':
+                        if args.alpha > 0:
+                            lam = np.random.beta(args.alpha, args.alpha)
+                        else:
+                            lam = 1
+                        rndidx=np.random.permutation(range(x.shape[0]))
+                        x=lam*x+(1-lam)*x[rndidx]
+                        y_pred = unet(x)
+                        loss=lam*lossf(y_pred,y_true)+(1-lam)*lossf(y_pred,y_true[rndidx])
+                    else:
+                        y_pred=unet(x)
+                        loss = lossf(y_pred, y_true)
                     losslist += [loss.item()]
                     if phase == "train":
                         (loss/args.subdivisions).backward()
@@ -241,6 +250,8 @@ if __name__ == "__main__":
         default=False,
         action='store_true'
     )
+    parser.add_argument('--mixup',default=False,action='store_true')
+    parser.add_argument('--alpha',default=1,type=float)
     args = parser.parse_args()
     args.num_train = args.split
     args.epochs *= args.split
