@@ -92,14 +92,17 @@ class Elastic_Distortion(object):
         image=sample['image']
         mask=sample['mask']
         C,H,W=image.shape
+        maskC,H,W=mask.shape
+        assert C==maskC
         shape = (H,W)
         dx = gaussian_filter((random_state.rand(*shape) * 2 - 1), self.sigma, mode="constant", cval=0) * alpha
         dy = gaussian_filter((random_state.rand(*shape) * 2 - 1), self.sigma, mode="constant", cval=0) * alpha
 
         x, y = numpy.meshgrid(numpy.arange(shape[0]), numpy.arange(shape[1]),indexing='ij')
+        indices = numpy.reshape(x+dy, (-1, 1)), numpy.reshape(y+dx, (-1, 1))
         for c in range(C):
-            indices = numpy.reshape(x+dy, (-1, 1)), numpy.reshape(y+dx, (-1, 1))
             sample['image'][c]=map_coordinates(image[c], indices, order=1).reshape(shape)
+        for c in range(maskC):
             sample['mask'][c]=map_coordinates(mask[c], indices, order=1).reshape(shape)
         sample['image']=torch.from_numpy(sample['image'])
         sample['mask']=torch.from_numpy(sample['mask'])

@@ -8,6 +8,7 @@ import random
 from PIL import Image
 import os
 def binary(x,a=.5):
+    assert x.shape[0]==3
     x[x>a]=1
     x[x<a]=0
     return x
@@ -62,7 +63,8 @@ class MulticlassCrackDataset(torch.utils.data.Dataset):
         print(f'{self.posttransforms=}')
     def resize(self):
         print(self.shape,'->',end='')
-        sz=64*random.randint(128//64,512//64)
+        # sz=64*random.randint(128//64,512//64)
+        sz=64*random.randint(256//64,320//64)
         self.shape=(sz,sz)
         print(self.shape)
     def __len__(self):
@@ -81,7 +83,7 @@ class MulticlassCrackDataset(torch.utils.data.Dataset):
     def __getitem__(self, item):
         item,posidx=self.getposition(item)
         img=Image.open(self.raw[item])
-        mask=Image.open(self.mask[item])
+        mask=Image.open(self.mask[item]).convert('RGB')
         W,H=img.size
         if self.train:
             if self.random:
@@ -89,12 +91,13 @@ class MulticlassCrackDataset(torch.utils.data.Dataset):
             else:
                 self.cropshape=(W//self.split,H//self.split)
         sample=self.pretransforms({'image':img,'mask':mask,'posidx':posidx})
-        # sample['image'].show()
-        # sample['mask'].show()
-        # exit()
         img=self.transform(sample['image'])
         mask=binary(self.transform(sample['mask']))
+        assert mask.shape[0]==3
         sample=self.posttransforms({'image':img,'mask':mask})
+        # ToPILImage()(sample['image']).show()
+        # ToPILImage()(sample['mask']).show()
+        # exit()
         img,mask=sample['image'],sample['mask']
         allmask=torch.zeros(self.shape)
         clsmask=torch.zeros_like(allmask).long()
