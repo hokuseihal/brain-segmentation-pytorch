@@ -26,3 +26,11 @@ def prmaper(_pred,_t_idx,numcls):
             for t_i in range(numcls):
                 prmap[pred_i,t_i]=((pred==pred_i) & (t_i==t_idx)).sum()
         return prmap
+def cal_grad_ratio(pred,y_true,num_cls=3):
+    grad=pred.grad.detach()
+    with torch.no_grad():
+        loss=torch.zeros(num_cls)
+        for cls in range(num_cls):
+            for i in range(3):
+                loss[cls]+=(grad[:,i][(y_true==cls)]**2).sum()
+        return loss

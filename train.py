@@ -14,7 +14,7 @@ from core import save, addvalue, load, load_check, saveworter
 from loss import DiceLoss, FocalLoss
 from unet import UNet, wrapped_UNet
 from utils.dataset import MulticlassCrackDataset as Dataset
-from utils.util import miouf, prmaper
+from utils.util import miouf, prmaper,cal_grad_ratio
 
 
 def setcolor(idxtendor, colors):
@@ -91,8 +91,7 @@ def main(args):
 
             for batchidx, data in enumerate(loaders[phase]):
                 x, y_true = data
-                x, y_true = x.to(device), y_true.to(device)
-
+                x, y_true = x.to(device), y_true.to(device).float()
                 with torch.set_grad_enabled(phase == "train"):
                     if args.mixup and phase=='train':
                         if args.alpha > 0:
@@ -101,14 +100,22 @@ def main(args):
                             lam = 1
                         rndidx=np.random.permutation(range(x.shape[0]))
                         x=lam*x+(1-lam)*x[rndidx]
+                        from torchvision.transforms import ToPILImage
+                        # ToPILImage()(x[0].detach().cpu()).show()
+                        # exit()
                         y_pred = unet(x)
                         loss=lam*lossf(y_pred,y_true)+(1-lam)*lossf(y_pred,y_true[rndidx])
                     else:
                         y_pred=unet(x)
-                        loss = lossf(y_pred, y_true)
+                        loss = lossf(y_pred, y_true.long())
                     losslist += [loss.item()]
                     if phase == "train":
+                        y_pred.retain_grad()
                         (loss/args.subdivisions).backward()
+                        gradlist=cal_grad_ratio(y_pred,y_true).numpy()
+                        for i in range(3):
+                            addvalue(writer,f'grad:{i}',gradlist[i],epoch)
+                        print(gradlist)
                         print(loss.item())
                         if (batchidx+1)%args.subdivisions==0:
                             print('step')

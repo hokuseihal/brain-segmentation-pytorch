@@ -21,9 +21,10 @@ class FocalLoss(nn.Module):
     def __init__(self,gamma=2):
         super(FocalLoss,self).__init__()
         self.gamma=gamma
-    def forward(self,y_pred,y_true):
+    def forward(self,y_pred,y_true,cal_loss_ratio=False):
         #y_pred(B,C,H,W)
         #y_true(B,H,W)
+        #loss of each class
         y_pred=F.softmax(y_pred,1)
         pt=torch.gather(y_pred,1,y_true.unsqueeze(1))
         return (-((1-pt)**self.gamma)*torch.log(pt)).mean()
