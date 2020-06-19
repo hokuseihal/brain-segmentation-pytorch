@@ -36,6 +36,7 @@ def main(args):
 
     masks = glob.glob(f'{args.maskfolder}/*.jpg')
     k_shot = int(len(masks) * 0.8) if args.k_shot == 0 else args.k_shot
+    random.seed(0)
     trainmask = random.sample(masks, k=k_shot)
     validmask = list(set(masks) - set(trainmask))
 
