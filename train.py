@@ -65,7 +65,7 @@ def main(args):
     validloader = torch.utils.data.DataLoader(validdataset, batch_size=args.batchsize//args.subdivisions, shuffle=True,
                                               num_workers=args.workers)
     loaders = {'train': trainloader, 'valid': validloader}
-    if args.saveoutput: unet.savefolder = args.savefolder
+    if args.saveimg: unet.savefolder = args.savefolder
     if args.loss == 'DSC':
         lossf = DiceLoss()
     elif args.loss == 'CE':
@@ -112,12 +112,12 @@ def main(args):
                         loss = lossf(y_pred, y_true.long())
                     losslist += [loss.item()]
                     if phase == "train":
-                        y_pred.retain_grad()
-                        (loss/args.subdivisions).backward()
-                        gradlist=cal_grad_ratio(y_pred,y_true).numpy()
-                        for i in range(3):
-                            addvalue(writer,f'grad:{i}',gradlist[i],epoch)
-                        print(gradlist)
+                        # y_pred.retain_grad()
+                        # (loss/args.subdivisions).backward()
+                        # gradlist=cal_grad_ratio(y_pred,y_true).numpy()
+                        # for i in range(3):
+                        #     addvalue(writer,f'grad:{i}',gradlist[i],epoch)
+                        # print(gradlist)
                         print(loss.item())
                         if (batchidx+1)%args.subdivisions==0:
                             print('step')
