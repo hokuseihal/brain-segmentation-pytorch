@@ -38,8 +38,9 @@ def main(args):
     k_shot = int(len(masks) * 0.8) if args.k_shot == 0 else args.k_shot
     random.seed(0)
     trainmask = random.sample(masks, k=k_shot)
-    validmask = list(set(masks) - set(trainmask))
-
+    validmask = sorted(list(set(masks) - set(trainmask)))
+    import hashlib
+    print(hashlib.md5("".join(validmask).encode()).hexdigest())
     unet = UNet(in_channels=3, out_channels=3, cutpath=args.cutpath)
     if args.pretrained:
         unet = torch.hub.load('mateuszbuda/brain-segmentation-pytorch', 'unet',
@@ -64,7 +65,7 @@ def main(args):
     validloader = torch.utils.data.DataLoader(validdataset, batch_size=args.batchsize//args.subdivisions, shuffle=True,
                                               num_workers=args.workers)
     loaders = {'train': trainloader, 'valid': validloader}
-    if args.saveimg: unet.savefolder = args.savefolder
+    if args.saveoutput: unet.savefolder = args.savefolder
     if args.loss == 'DSC':
         lossf = DiceLoss()
     elif args.loss == 'CE':
@@ -122,21 +123,20 @@ def main(args):
                             print('step')
                             optimizer.step()
                             optimizer.zero_grad()
-                    if phase == "valid":
-                        miou = miouf(y_pred, y_true, len(traindataset.clscolor)).item()
-                        valid_miou += [miou]
-                        prmap += prmaper(y_pred, y_true, len(traindataset.clscolor))
-                        if batchidx == 0:
-                            save_image(torch.cat(
-                                [x, setcolor(y_true, traindataset.clscolor),
-                                 setcolor(y_pred.argmax(1), traindataset.clscolor)],
-                                dim=2), f'{args.savefolder}/{epoch}.jpg')
+
+                    miou = miouf(y_pred, y_true, len(traindataset.clscolor)).item()
+                    valid_miou += [miou]
+                    prmap += prmaper(y_pred, y_true, len(traindataset.clscolor))
+                    if batchidx == 0:
+                        save_image(torch.cat(
+                            [x, setcolor(y_true, traindataset.clscolor),
+                             setcolor(y_pred.argmax(1), traindataset.clscolor)],
+                            dim=2), f'{args.savefolder}/{epoch}.jpg')
             addvalue(writer, f'loss:{phase}', np.mean(losslist), epoch)
             print(f'{epoch=}/{args.epochs}:{phase}:{np.mean(losslist):.4f}')
-            if phase == "valid":
-                print(f'test:miou:{np.nanmean(valid_miou):.4f}')
-                addvalue(writer, 'acc:miou', np.nanmean(valid_miou), epoch)
-                print((prmap / (batchidx + 1)).int())
+            print(f'test:miou:{np.nanmean(valid_miou):.4f}')
+            addvalue(writer, f'mIoU:{phase}', np.nanmean(valid_miou), epoch)
+            print((prmap / (batchidx + 1)).int())
         save(epoch, unet, args.savefolder, writer, worter)
 
 
