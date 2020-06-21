@@ -84,13 +84,13 @@ def main(args):
             valid_miou = []
             losslist = []
             prmap = torch.zeros(len(traindataset.clscolor), len(traindataset.clscolor))
+
             if phase == "train":
                 unet.train()
                 if args.resize:
                     traindataset.resize()
             else:
                 unet.eval()
-
             for batchidx, data in enumerate(loaders[phase]):
                 x, y_true = data
                 x, y_true = x.to(device), y_true.to(device).float()
@@ -138,7 +138,6 @@ def main(args):
             addvalue(writer, f'mIoU:{phase}', np.nanmean(valid_miou), epoch)
             print((prmap / (batchidx + 1)).int())
         save(epoch, unet, args.savefolder, writer, worter)
-
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(

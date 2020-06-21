@@ -9,7 +9,7 @@ from utils.util import prmaper,miouf
 # writer, preepoch, modelpath, worter = saved['writer'], saved['epoch'], saved['modelpath'], saved['worter']
 # trainmask, validmask = worter['trainmask'], worter['validmask']
 device='cuda'
-modelpath1='/home/hokusei/crack_report/focal2_1/model.pth'
+modelpath1='data/focal2_x/model.pth'
 unet1 = UNet(in_channels=3, out_channels=3).to(device)
 unet1.load_state_dict(torch.load(modelpath1))
 
@@ -17,7 +17,7 @@ import random
 import glob
 import os
 masks = glob.glob(f'/home/hokusei/src/data/owncrack/scene/mask/*.jpg')
-folder='data/out/focal2_1'
+folder='data/out/focal2_x'
 os.makedirs(folder,exist_ok=True)
 k_shot = int(len(masks) * 0.8)
 
