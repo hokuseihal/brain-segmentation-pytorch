@@ -113,7 +113,7 @@ def main(args):
                     losslist += [loss.item()]
                     if phase == "train":
                         # y_pred.retain_grad()
-                        # (loss/args.subdivisions).backward()
+                        (loss/args.subdivisions).backward()
                         # gradlist=cal_grad_ratio(y_pred,y_true).numpy()
                         # for i in range(3):
                         #     addvalue(writer,f'grad:{i}',gradlist[i],epoch)
