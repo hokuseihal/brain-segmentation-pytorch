@@ -41,7 +41,7 @@ def main(args):
     validmask = sorted(list(set(masks) - set(trainmask)))
     import hashlib
     print(hashlib.md5("".join(validmask).encode()).hexdigest())
-    unet = UNet(in_channels=3, out_channels=3, cutpath=args.cutpath)
+    unet = UNet(in_channels=3, out_channels=3, cutpath=args.cutpath,dropout=args.dropout)
     if args.pretrained:
         unet = torch.hub.load('mateuszbuda/brain-segmentation-pytorch', 'unet',
                               in_channels=3, out_channels=1, init_features=32, pretrained=True)
@@ -78,14 +78,15 @@ def main(args):
     optimizer = optim.Adam(unet.parameters(), lr=args.lr)
 
     os.makedirs(args.savefolder, exist_ok=True)
-    print('start train')
     for epoch in range(preepoch, args.epochs):
         for phase in ["train"] * args.num_train + ["valid"]:
+        # for phase in ['valid']:
             valid_miou = []
             losslist = []
             prmap = torch.zeros(len(traindataset.clscolor), len(traindataset.clscolor))
 
             if phase == "train":
+                print('start train')
                 unet.train()
                 if args.resize:
                     traindataset.resize()
@@ -136,7 +137,7 @@ def main(args):
             print(f'{epoch=}/{args.epochs}:{phase}:{np.mean(losslist):.4f}')
             print(f'test:miou:{np.nanmean(valid_miou):.4f}')
             addvalue(writer, f'mIoU:{phase}', np.nanmean(valid_miou), epoch)
-            print((prmap / (batchidx + 1)).int())
+            print((prmap / ((batchidx + 1)*args.batchsize)).int())
         save(epoch, unet, args.savefolder, writer, worter)
 
 if __name__ == "__main__":
@@ -256,6 +257,11 @@ if __name__ == "__main__":
         '--elastic',
         default=False,
         action='store_true'
+    )
+    parser.add_argument(
+        '--dropout',
+        default=0,
+        type=float
     )
     parser.add_argument('--mixup',default=False,action='store_true')
     parser.add_argument('--alpha',default=1,type=float)

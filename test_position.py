@@ -5,26 +5,20 @@ import torch
 from train import setcolor
 from unet import UNet
 from utils.util import prmaper,miouf
-# saved = load('data/split2')
-# writer, preepoch, modelpath, worter = saved['writer'], saved['epoch'], saved['modelpath'], saved['worter']
-# trainmask, validmask = worter['trainmask'], worter['validmask']
-device='cuda'
-modelpath1='data/focal2_x/model.pth'
-unet1 = UNet(in_channels=3, out_channels=3).to(device)
-unet1.load_state_dict(torch.load(modelpath1))
-
-import random
-import glob
 import os
-masks = glob.glob(f'/home/hokusei/src/data/owncrack/scene/mask/*.jpg')
-folder='data/out/focal2_x'
-os.makedirs(folder,exist_ok=True)
-k_shot = int(len(masks) * 0.8)
+device='cuda'
+unet1 = UNet(in_channels=3, out_channels=3).to(device)
+savefolder='data/crack_report/split2focal_x/'
+folder='data/out/split2focal_x'
+split=2
 
-random.seed(0)
-trainmask = sorted(random.sample(masks, k=k_shot))
-validmask = sorted(list(set(masks) - set(trainmask)))
-split=1
+os.makedirs(folder,exist_ok=True)
+saved = load(savefolder)
+writer, preepoch, modelpath, worter = saved['writer'], saved['epoch'], saved['modelpath'], saved['worter']
+trainmask, validmask = worter['trainmask'], worter['validmask']
+unet1.load_state_dict(torch.load(modelpath))
+print('load model')
+
 validdataset = Dataset(validmask, train=False, random=False, split=split)
 validdataset.ret_item=True
 prmap1=np.zeros((split,split,3,3))

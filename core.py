@@ -48,15 +48,12 @@ def save(e,model,fol,dic=None,worter=None):
             pickle.dump(worter,worterf)
 import os
 def load(folder):
-    if os.path.exists(f'{folder}/data.pkl'):
-        with open(f'{folder}/data.pkl','rb') as dataf:
-           writer= pickle.load(dataf)
-    if os.path.exists(f'{folder}/.epoch'):
-        with open(f'{folder}/.epoch','r') as epochf:
-            epoch=int(epochf.readline())
-    if os.path.exists(f'{folder}/worter.pkl'):
-        with open(f'{folder}/worter.pkl','rb') as worterf:
-            worter=pickle.load(worterf)
+    with open(f'{folder}/data.pkl','rb') as dataf:
+       writer= pickle.load(dataf)
+    with open(f'{folder}/.epoch','r') as epochf:
+        epoch=int(epochf.readline())
+    with open(f'{folder}/worter.pkl','rb') as worterf:
+        worter=pickle.load(worterf)
     return {'writer':writer,'epoch':epoch,'modelpath':f'{folder}/model.pth','worter':worter}
 def load_check(folder):
     if not os.path.exists(f'{folder}/model.pth'):

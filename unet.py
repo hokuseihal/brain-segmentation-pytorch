@@ -7,7 +7,7 @@ from torchvision.utils import save_image
 
 class UNet(nn.Module):
 
-    def __init__(self, in_channels=3, out_channels=1, init_features=32, cutpath=False, savefolder=False):
+    def __init__(self, in_channels=3, out_channels=1, init_features=32, cutpath=False, savefolder=False,dropout=0.2):
         super(UNet, self).__init__()
 
         features = init_features
@@ -44,12 +44,16 @@ class UNet(nn.Module):
         self.conv = nn.Conv2d(
             in_channels=features, out_channels=out_channels, kernel_size=1
         )
+        self.dropout1=nn.Dropout(dropout)
+        self.dropout2=nn.Dropout(dropout)
+        self.dropout3=nn.Dropout(dropout)
+        self.dropout4=nn.Dropout(dropout)
 
     def forward(self, x):
-        enc1 = self.encoder1(x)
-        enc2 = self.encoder2(self.pool1(enc1))
-        enc3 = self.encoder3(self.pool2(enc2))
-        enc4 = self.encoder4(self.pool3(enc3))
+        enc1 = self.dropout1(self.encoder1(x))
+        enc2 = self.dropout2(self.encoder2(self.pool1(enc1)))
+        enc3 = self.dropout3(self.encoder3(self.pool2(enc2)))
+        enc4 = self.dropout4(self.encoder4(self.pool3(enc3)))
 
         bottleneck = self.bottleneck(self.pool4(enc4))
 
