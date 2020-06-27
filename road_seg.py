@@ -37,14 +37,14 @@ def operate(phase):
             target=target.to(device)
             output=unet(data)
             loss=criterion(output,target)
-            print(f'{loss.item()/(batchsize//subdivisions):.4f}')
+            print(f'{loss.item():.4f}')
             if phase=='train':
                 (loss/subdivisions).backward()
             if (bchidx*(batchsize//subdivisions))%(batchsize)==0:
                 print(f'{e}:{phase}{bchidx}/{len(loader)}:step')
                 optimizer.step()
                 optimizer.zero_grad()
-            addvalue(writer,f'loss:{phase}',loss.item()/(batchsize//subdivisions),e)
+            addvalue(writer,f'loss:{phase}',loss.item(),e)
             miou=miouf(output,target,2)
             addvalue(writer,f'miou:{phase}',miou.item(),e)
             if bchidx==0:
@@ -59,7 +59,7 @@ if __name__=='__main__':
     folder='data/roadseg'
     os.makedirs('data/roadseg/', exist_ok=True)
     batchsize=64
-    subdivisions=64
+    subdivisions=2
     num_cpu=cpu_count()
     trainloader=torch.utils.data.DataLoader(BDD_road_Seg_Dataset('../data/bdd100k/seg'),batch_size=batchsize//subdivisions,shuffle=True,num_workers=num_cpu)
     validloader=torch.utils.data.DataLoader(BDD_road_Seg_Dataset('../data/bdd100k/seg',seg='val'),batch_size=batchsize//subdivisions,shuffle=True,num_workers=num_cpu)
@@ -67,3 +67,4 @@ if __name__=='__main__':
         operate('train')
         operate('valid')
         savedic(writer,f'data/{folder}')
+        torch.save(unet.state_dict(),'data/roadseg/model.pth')
