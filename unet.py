@@ -7,7 +7,7 @@ from torchvision.utils import save_image
 
 class UNet(nn.Module):
 
-    def __init__(self, in_channels=3, out_channels=1, init_features=32, cutpath=False, savefolder=False,dropout=0.2):
+    def __init__(self, in_channels=3, out_channels=1, init_features=32, cutpath=False, savefolder=False,dropout=0):
         super(UNet, self).__init__()
 
         features = init_features

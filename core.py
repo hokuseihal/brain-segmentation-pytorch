@@ -1,25 +1,27 @@
+import numpy as np
+import librosa
+import torch
+import torch.nn as nn
 import matplotlib.pyplot as plt
 plt.switch_backend('agg')
 import pickle
-import torch
-
-
 def addvalue(dict,key,value,epoch):
     if not key in dict.keys():
-        dict[key]=[value]
+        dict[key]=[[value]]
     else:
         if epoch > len(dict[key])-1:
-            dict[key].append(value)
+            dict[key].append([value])
         else:
-            dict[key][epoch]=value
-def saveworter(worter,key,value):
-    worter[key]=value
-
-def savedic(dict,fol):
+            dict[key][epoch].append(value)
+def savedic(dict,fol,save=True):
     n=1
     numgraph=len(set([i.split(':')[0] for i in dict]))
     axdic={}
     fig=plt.figure()
+    for key in dict:
+        for e,i in enumerate(dict[key]):
+            if type(i)==type([]):
+                dict[key][e]=np.mean(dict[key][e])
     for key in dict:
         graph,label=key.split(':')
         if graph in axdic:
@@ -36,32 +38,11 @@ def savedic(dict,fol):
     with open(f'{fol}/data.pkl','wb') as f:
         pickle.dump(dict,f)
 
-def save(e,model,fol,dic=None,worter=None):
+def save(e,model,fol,dic=None):
     savedmodelpath=f'{fol}/model.pth'
     if dic:
         savedic(dic,'/'.join(savedmodelpath.split('/')[:-1]))
-    torch.save(model.state_dict(), savedmodelpath)
+    #torch.save(model.state_dict(), savedmodelpath)
     with open(f'{fol}/.epoch','w') as f:
         f.write(f'{e}')
-    if worter:
-        with open(f'{fol}/worter.pkl','wb') as worterf:
-            pickle.dump(worter,worterf)
-import os
-def load(folder):
-    with open(f'{folder}/data.pkl','rb') as dataf:
-       writer= pickle.load(dataf)
-    with open(f'{folder}/.epoch','r') as epochf:
-        epoch=int(epochf.readline())
-    with open(f'{folder}/worter.pkl','rb') as worterf:
-        worter=pickle.load(worterf)
-    return {'writer':writer,'epoch':epoch,'modelpath':f'{folder}/model.pth','worter':worter}
-def load_check(folder):
-    if not os.path.exists(f'{folder}/model.pth'):
-        print('You want to load previous session, but not saved')
-        return False
-    else:
-        return True
-def savefig(pklpath):
-    with open(pklpath,'rb') as f:
-        writer=pickle.load(f)
-        savedic(writer,'/'.join(pklpath.split('/')[:-1]))
+
