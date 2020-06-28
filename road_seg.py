@@ -45,8 +45,9 @@ def operate(phase):
                 optimizer.step()
                 optimizer.zero_grad()
             addvalue(writer,f'loss:{phase}',loss.item(),e)
-            miou=miouf(output,target,2)
+            miou=miouf(output,target,bce=True)
             addvalue(writer,f'miou:{phase}',miou.item(),e)
+            print(f'{miou=}')
             if bchidx==0:
                 save_image(torch.cat([data,output.repeat(1,3,1,1)],dim=-1),f'{folder}/{e}.png')
 if __name__=='__main__':
@@ -59,12 +60,12 @@ if __name__=='__main__':
     folder='data/roadseg'
     os.makedirs('data/roadseg/', exist_ok=True)
     batchsize=64
-    subdivisions=2
+    subdivisions=32
     num_cpu=cpu_count()
     trainloader=torch.utils.data.DataLoader(BDD_road_Seg_Dataset('../data/bdd100k/seg'),batch_size=batchsize//subdivisions,shuffle=True,num_workers=num_cpu)
     validloader=torch.utils.data.DataLoader(BDD_road_Seg_Dataset('../data/bdd100k/seg',seg='val'),batch_size=batchsize//subdivisions,shuffle=True,num_workers=num_cpu)
-    for e in range(100):
+    for e in range(50):
         operate('train')
         operate('valid')
-        savedic(writer,f'data/{folder}')
+        savedic(writer,folder)
         torch.save(unet.state_dict(),'data/roadseg/model.pth')
