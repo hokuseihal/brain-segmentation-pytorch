@@ -15,6 +15,10 @@ from loss import DiceLoss, FocalLoss
 from unet import UNet, wrapped_UNet
 from utils.own import MulticlassCrackDataset as Dataset
 from utils.util import miouf, prmaper
+from gan import Discriminator
+from radam import RAdam
+from torch import autograd
+from torch.autograd import Variable
 
 
 def setcolor(idxtendor, colors):
@@ -26,6 +30,34 @@ def setcolor(idxtendor, colors):
         for idx, color in enumerate(colors, 1):
             colimg[b, :, idxtendor[b] == idx] = (color.view(3, 1)).to(idxtendor.device).float()
     return colimg
+
+def onehot(x,num_class=3):
+    return torch.eye(num_class)[x].permute(0,3,1,2).to(x.device)
+
+
+def calculate_gradient_penalty(D,real_images, fake_images,lambda_term=10):
+    B,C,H,W=real_images.shape
+    device=real_images.device
+    # eta = torch.FloatTensor(self.batch_size,1,1,1).uniform_(0,1)
+    # eta = eta.expand(self.batch_size, real_images.size(1), real_images.size(2), real_images.size(3))
+    # if self.cuda:
+    #     eta = eta.cuda(self.cuda_index)
+    # else:
+    #     eta = eta
+    eta=torch.rand(B,1,1,1).to(device)
+    interpolated = eta * real_images + ((1 - eta) * fake_images)
+    # define it to calculate gradient
+    # interpolated = Variable(interpolated, requires_grad=True)
+    # calculate probability of interpolated examples
+    prob_interpolated = D(interpolated)
+    # calculate gradients of probabilities with respect to examples
+    gradients = autograd.grad(outputs=prob_interpolated, inputs=interpolated,
+                              grad_outputs=torch.ones(
+                                  prob_interpolated.size()).to(device),
+                              create_graph=True, retain_graph=True)[0]
+    grad_penalty = ((gradients.norm(2, dim=1) - 1) ** 2).mean() * lambda_term
+    return grad_penalty
+
 
 
 
@@ -44,6 +76,7 @@ def main(args):
         unet = torch.hub.load('mateuszbuda/brain-segmentation-pytorch', 'unet',
                               in_channels=3, out_channels=1, init_features=32, pretrained=True)
         unet = wrapped_UNet(unet, 1, 3)
+    discriminator=Discriminator(3).to(device)
     writer = {}
     worter = {}
     preepoch = 0
@@ -58,9 +91,9 @@ def main(args):
     saveworter(worter, 'validmask', validmask)
     traindataset = Dataset(trainmask, train=True, random=args.random, split=args.split)
     validdataset = Dataset(validmask, train=False, random=args.random, split=args.split)
-    trainloader = torch.utils.data.DataLoader(traindataset, batch_size=args.batchsize, shuffle=True,
+    trainloader = torch.utils.data.DataLoader(traindataset, batch_size=args.batchsize//args.subdivision, shuffle=True,
                                               num_workers=args.workers)
-    validloader = torch.utils.data.DataLoader(validdataset, batch_size=args.batchsize, shuffle=True,
+    validloader = torch.utils.data.DataLoader(validdataset, batch_size=args.batchsize//args.subdivision, shuffle=True,
                                               num_workers=args.workers)
     loaders = {'train': trainloader, 'valid': validloader}
     if args.saveimg: unet.savefolder = args.savefolder
@@ -73,7 +106,8 @@ def main(args):
     else:
         assert False, 'set correct loss.'
 
-    optimizer = optim.Adam(unet.parameters(), lr=args.lr)
+    optimizer = RAdam(unet.parameters(), lr=args.lr)
+    d_optimizer=RAdam(discriminator.parameters())
 
     os.makedirs(args.savefolder, exist_ok=True)
     print('start train')
@@ -97,12 +131,25 @@ def main(args):
                 with torch.set_grad_enabled(phase == "train"):
                     y_pred = unet(x)
 
+                    gan_x=onehot(y_true)
+                    d_real_out=discriminator(gan_x).mean()
+                    d_fake_out=discriminator(y_pred).mean()
+                    gradient_penalty=calculate_gradient_penalty(discriminator,gan_x,y_pred)
+
+                    addvalue(writer,f'd_real:{phase}',d_real_out.item(),epoch)
+                    addvalue(writer,f'd_fake:{phase}',d_fake_out.item(),epoch)
+                    addvalue(writer,f'EMDLoss:{phase}',d_real_out-d_fake_out+gradient_penalty,epoch)
+
                     loss = lossf(y_pred, y_true)
+
+                    print(f'loss:{loss.item():.4f}, d_real:{d_real_out.item():.4f}, d_fake:{d_fake_out.item():.4f}, gp:{gradient_penalty.item():.4f}')
                     losslist += [loss.item()]
                     print(loss)
                     if phase == "train":
-                        loss.backward()
-                        optimizer.step()
+                        (-d_real_out+d_fake_out+gradient_penalty+loss).backward()
+                        if i%(args.batchsize//args.subdivision)==0:
+                            optimizer.step()
+                            d_optimizer.step()
                     if phase == "valid":
                         miou = miouf(y_pred, y_true, len(traindataset.clscolor)).item()
                         valid_miou += [miou]
@@ -218,6 +265,11 @@ if __name__ == "__main__":
         '--resize',
         default=False,
         action='store_true'
+    )
+    parser.add_argument(
+        '--subdivision',
+        type=int,
+        default=4
     )
     args = parser.parse_args()
     args.num_train = args.split
