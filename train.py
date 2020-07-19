@@ -142,7 +142,7 @@ def main(args):
 
                     loss = lossf(y_pred, y_true)
 
-                    print(f'{epoch}:{i}/{loaders[phase]}:loss:{loss.item():.4f}, d_real:{d_real_out.item():.4f}, d_fake:{d_fake_out.item():.4f}, gp:{gradient_penalty.item():.4f}')
+                    print(f'{epoch}:{i}/{len(loaders[phase])}:loss:{loss.item():.4f}, d_real:{d_real_out.item():.4f}, d_fake:{d_fake_out.item():.4f}, gp:{gradient_penalty.item():.4f}')
                     losslist += [loss.item()]
                     if phase == "train":
                         (-d_real_out+d_fake_out+gradient_penalty+loss).backward()
