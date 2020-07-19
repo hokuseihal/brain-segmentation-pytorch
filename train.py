@@ -134,15 +134,15 @@ def main(args):
                     gan_x=onehot(y_true)
                     d_real_out=discriminator(gan_x).mean()
                     d_fake_out=discriminator(y_pred).mean()
-                    gradient_penalty=calculate_gradient_penalty(discriminator,gan_x,y_pred)
+                    if phase=='train':gradient_penalty=calculate_gradient_penalty(discriminator,gan_x,y_pred)
 
                     addvalue(writer,f'd_real:{phase}',d_real_out.item(),epoch)
                     addvalue(writer,f'd_fake:{phase}',d_fake_out.item(),epoch)
-                    addvalue(writer,f'EMDLoss:{phase}',d_real_out-d_fake_out+gradient_penalty,epoch)
+                    if phase=='train':addvalue(writer,f'EMDLoss:{phase}',d_real_out-d_fake_out+gradient_penalty,epoch)
 
                     loss = lossf(y_pred, y_true)
 
-                    print(f'loss:{loss.item():.4f}, d_real:{d_real_out.item():.4f}, d_fake:{d_fake_out.item():.4f}, gp:{gradient_penalty.item():.4f}')
+                    print(f'{epoch}:{i}/{loaders[phase]}:loss:{loss.item():.4f}, d_real:{d_real_out.item():.4f}, d_fake:{d_fake_out.item():.4f}, gp:{gradient_penalty.item():.4f}')
                     losslist += [loss.item()]
                     if phase == "train":
                         (-d_real_out+d_fake_out+gradient_penalty+loss).backward()
