@@ -144,7 +144,6 @@ def main(args):
 
                     print(f'loss:{loss.item():.4f}, d_real:{d_real_out.item():.4f}, d_fake:{d_fake_out.item():.4f}, gp:{gradient_penalty.item():.4f}')
                     losslist += [loss.item()]
-                    print(loss)
                     if phase == "train":
                         (-d_real_out+d_fake_out+gradient_penalty+loss).backward()
                         if i%(args.batchsize//args.subdivision)==0:
