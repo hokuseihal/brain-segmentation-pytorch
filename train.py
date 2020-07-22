@@ -127,6 +127,7 @@ def main(args):
                 x, y_true = data
                 x, y_true = x.to(device), y_true.to(device)
                 optimizer.zero_grad()
+                d_optimizer.zero_grad()
 
                 with torch.set_grad_enabled(phase == "train"):
                     y_pred = unet(x)
@@ -268,7 +269,7 @@ if __name__ == "__main__":
     parser.add_argument(
         '--subdivision',
         type=int,
-        default=4
+        default=1
     )
     args = parser.parse_args()
     args.num_train = args.split
