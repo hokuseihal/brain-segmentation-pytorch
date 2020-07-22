@@ -125,26 +125,27 @@ def main(args):
                     y_pred = unet(x)
 
                     gan_x=onehot(y_true)
-                    d_real_out=discriminator(gan_x).mean()
                     d_fake_out=discriminator(y_pred).mean()
-                    if phase=='train':gradient_penalty=calculate_gradient_penalty(discriminator,gan_x,y_pred)
+                    if i%2==0:
+                        d_real_out=discriminator(gan_x).mean()
+                        if phase=='train':gradient_penalty=calculate_gradient_penalty(discriminator,gan_x,y_pred)
 
-                    addvalue(writer,f'd_real:{phase}',d_real_out.item(),epoch)
-                    addvalue(writer,f'd_fake:{phase}',d_fake_out.item(),epoch)
-                    if phase=='train':addvalue(writer,f'EMDLoss:{phase}',d_real_out-d_fake_out+gradient_penalty,epoch)
+                        addvalue(writer,f'd_real:{phase}',d_real_out.item(),epoch)
+                        addvalue(writer,f'EMDLoss:{phase}',d_real_out-d_fake_out+gradient_penalty,epoch)
 
-                    gloss=-d_fake_out
-
-                    addvalue(writer,f'g_loss:{phase}',gloss.item(),epoch)
-                    print(f'{epoch}:{i}/{len(loaders[phase])}:gloss:{gloss.item():.4f}, d_real:{d_real_out.item():.4f}, d_fake:{d_fake_out.item():.4f}, gp:{gradient_penalty.item():.4f}')
-                    losslist += [gloss.item()]
-                    if phase == "train":
-                        (-d_real_out+d_fake_out+gradient_penalty).backward()
-                        gloss.backward()
-                        if i%(args.batchsize//args.subdivision)==0:
-                            g_optimizer.step()
-                            d_optimizer.step()
-                            print('step')
+                        if phase == "train":
+                            (-d_real_out+d_fake_out+gradient_penalty).backward()
+                            if i%(args.batchsize//args.subdivision)==0:
+                                d_optimizer.step()
+                                print('d_step')
+                    else:
+                        print(f'{epoch}:{i}/{len(loaders[phase])}:gloss:{d_fake_out.item():.4f}, d_real:{d_real_out.item():.4f}, d_fake:{d_fake_out.item():.4f}, gp:{gradient_penalty.item():.4f}')
+                        if phase == "train":
+                            (-d_fake_out).backward()
+                            if i%(args.batchsize//args.subdivision)==0:
+                                g_optimizer.step()
+                                print('g_step')
+                    if phase=='train': addvalue(writer, f'd_fake:{phase}', d_fake_out.item(), epoch)
                     if phase == "valid":
                         miou = miouf(y_pred, y_true, len(traindataset.clscolor)).item()
                         valid_miou += [miou]
@@ -154,12 +155,11 @@ def main(args):
                                 [x, setcolor(y_true, traindataset.clscolor),
                                  setcolor(y_pred.argmax(1), traindataset.clscolor)],
                                 dim=2), f'{args.savefolder}/{epoch}.jpg')
-            addvalue(writer, f'gloss:{phase}', np.mean(losslist), epoch)
             print(f'{epoch=}/{args.epochs}:{phase}:{np.mean(losslist):.4f}')
             if phase == "valid":
                 print(f'test:miou:{np.mean(valid_miou):.4f}')
                 addvalue(writer, 'acc:miou', np.mean(valid_miou), epoch)
-                print((prmap / (i + 1)).int())
+                print((prmap / (len(loaders[phase]) + 1)).int())
         save(epoch, unet, args.savefolder, writer, worter)
 
 
