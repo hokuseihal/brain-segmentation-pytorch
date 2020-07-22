@@ -119,6 +119,7 @@ def main(args):
                 x, y_true = data
                 x, y_true = x.to(device), y_true.to(device)
                 g_optimizer.zero_grad()
+                d_optimizer.zero_grad()
 
                 with torch.set_grad_enabled(phase == "train"):
                     y_pred = unet(x)
