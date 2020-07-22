@@ -97,16 +97,8 @@ def main(args):
                                               num_workers=args.workers)
     loaders = {'train': trainloader, 'valid': validloader}
     if args.saveimg: unet.savefolder = args.savefolder
-    if args.loss == 'DSC':
-        lossf = DiceLoss()
-    elif args.loss == 'CE':
-        lossf = nn.CrossEntropyLoss()
-    elif args.loss == 'Focal':
-        lossf = FocalLoss()
-    else:
-        assert False, 'set correct loss.'
 
-    optimizer = RAdam(unet.parameters(), lr=args.lr)
+    g_optimizer = RAdam(unet.parameters(), lr=args.lr)
     d_optimizer=RAdam(discriminator.parameters())
 
     os.makedirs(args.savefolder, exist_ok=True)
@@ -126,7 +118,7 @@ def main(args):
             for i, data in enumerate(loaders[phase]):
                 x, y_true = data
                 x, y_true = x.to(device), y_true.to(device)
-                optimizer.zero_grad()
+                g_optimizer.zero_grad()
 
                 with torch.set_grad_enabled(phase == "train"):
                     y_pred = unet(x)
@@ -140,15 +132,18 @@ def main(args):
                     addvalue(writer,f'd_fake:{phase}',d_fake_out.item(),epoch)
                     if phase=='train':addvalue(writer,f'EMDLoss:{phase}',d_real_out-d_fake_out+gradient_penalty,epoch)
 
-                    loss = lossf(y_pred, y_true)
+                    gloss=-d_fake_out
 
-                    print(f'{epoch}:{i}/{len(loaders[phase])}:loss:{loss.item():.4f}, d_real:{d_real_out.item():.4f}, d_fake:{d_fake_out.item():.4f}, gp:{gradient_penalty.item():.4f}')
-                    losslist += [loss.item()]
+                    addvalue(writer,f'g_loss:{phase}',gloss.item(),epoch)
+                    print(f'{epoch}:{i}/{len(loaders[phase])}:gloss:{gloss.item():.4f}, d_real:{d_real_out.item():.4f}, d_fake:{d_fake_out.item():.4f}, gp:{gradient_penalty.item():.4f}')
+                    losslist += [gloss.item()]
                     if phase == "train":
-                        (-d_real_out+d_fake_out+gradient_penalty+loss).backward()
+                        (-d_real_out+d_fake_out+gradient_penalty).backward()
+                        gloss.backward()
                         if i%(args.batchsize//args.subdivision)==0:
-                            optimizer.step()
+                            g_optimizer.step()
                             d_optimizer.step()
+                            print('step')
                     if phase == "valid":
                         miou = miouf(y_pred, y_true, len(traindataset.clscolor)).item()
                         valid_miou += [miou]
@@ -158,7 +153,7 @@ def main(args):
                                 [x, setcolor(y_true, traindataset.clscolor),
                                  setcolor(y_pred.argmax(1), traindataset.clscolor)],
                                 dim=2), f'{args.savefolder}/{epoch}.jpg')
-            addvalue(writer, f'loss:{phase}', np.mean(losslist), epoch)
+            addvalue(writer, f'gloss:{phase}', np.mean(losslist), epoch)
             print(f'{epoch=}/{args.epochs}:{phase}:{np.mean(losslist):.4f}')
             if phase == "valid":
                 print(f'test:miou:{np.mean(valid_miou):.4f}')
@@ -268,7 +263,7 @@ if __name__ == "__main__":
     parser.add_argument(
         '--subdivision',
         type=int,
-        default=4
+        default=1
     )
     args = parser.parse_args()
     args.num_train = args.split
