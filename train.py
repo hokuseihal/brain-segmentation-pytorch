@@ -91,9 +91,9 @@ def main(args):
     saveworter(worter, 'validmask', validmask)
     traindataset = Dataset(trainmask, train=True, random=args.random, split=args.split)
     validdataset = Dataset(validmask, train=False, random=args.random, split=args.split)
-    trainloader = torch.utils.data.DataLoader(traindataset, batch_size=args.batchsize//args.subdivision, shuffle=True,
+    trainloader = torch.utils.data.DataLoader(traindataset, batch_size=args.batchsize, shuffle=True,
                                               num_workers=args.workers)
-    validloader = torch.utils.data.DataLoader(validdataset, batch_size=args.batchsize//args.subdivision, shuffle=True,
+    validloader = torch.utils.data.DataLoader(validdataset, batch_size=args.batchsize, shuffle=True,
                                               num_workers=args.workers)
     loaders = {'train': trainloader, 'valid': validloader}
     if args.saveimg: unet.savefolder = args.savefolder
@@ -127,24 +127,27 @@ def main(args):
                     gan_x=onehot(y_true)
                     d_fake_out=discriminator(y_pred).mean()
                     if i%2==0:
+                        print('\nd')
                         d_real_out=discriminator(gan_x).mean()
-                        if phase=='train':gradient_penalty=calculate_gradient_penalty(discriminator,gan_x,y_pred)
 
+                        print(f'{epoch}:{i}/{len(loaders[phase])} EMD:{(d_real_out-d_fake_out).item():.4f}, d_real:{d_real_out.item():.4f}, d_fake:{d_fake_out.item():.4f}')
                         addvalue(writer,f'd_real:{phase}',d_real_out.item(),epoch)
-                        addvalue(writer,f'EMDLoss:{phase}',d_real_out-d_fake_out+gradient_penalty,epoch)
 
                         if phase == "train":
+                            gradient_penalty=calculate_gradient_penalty(discriminator,gan_x,y_pred)
+                            addvalue(writer,f'DLoss:{phase}',d_real_out-d_fake_out+gradient_penalty,epoch)
+                            print(f' gp:{gradient_penalty.item():.4f}')
+                            addvalue(writer, f'gp:{phase}', gradient_penalty, epoch)
                             (-d_real_out+d_fake_out+gradient_penalty).backward()
-                            if i%(args.batchsize//args.subdivision)==0:
-                                d_optimizer.step()
-                                print('d_step')
+                            d_optimizer.step()
+                            print('d_step')
                     else:
-                        print(f'{epoch}:{i}/{len(loaders[phase])}:gloss:{d_fake_out.item():.4f}, d_real:{d_real_out.item():.4f}, d_fake:{d_fake_out.item():.4f}, gp:{gradient_penalty.item():.4f}')
+                        print('\ng')
+                        print(f'{epoch}:{i}/{len(loaders[phase])} d_fake:{d_fake_out.item():.4f}')
                         if phase == "train":
                             (-d_fake_out).backward()
-                            if i%(args.batchsize//args.subdivision)==0:
-                                g_optimizer.step()
-                                print('g_step')
+                            g_optimizer.step()
+                            print('g_step')
                     if phase=='train': addvalue(writer, f'd_fake:{phase}', d_fake_out.item(), epoch)
                     if phase == "valid":
                         miou = miouf(y_pred, y_true, len(traindataset.clscolor)).item()
@@ -260,11 +263,6 @@ if __name__ == "__main__":
         '--resize',
         default=False,
         action='store_true'
-    )
-    parser.add_argument(
-        '--subdivision',
-        type=int,
-        default=1
     )
     args = parser.parse_args()
     args.num_train = args.split
