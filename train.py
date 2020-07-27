@@ -160,7 +160,6 @@ def main(args):
                                 dim=2), f'{args.savefolder}/{epoch}.jpg')
             print(f'{epoch=}/{args.epochs}:{phase}:{np.mean(losslist):.4f}')
             if phase == "valid":
-                print(f'test:miou:{np.mean(valid_miou):.4f}')
                 addvalue(writer, 'acc:miou', np.mean(valid_miou), epoch)
                 print((prmap / (len(loaders[phase]) + 1)).int())
         save(epoch, unet, args.savefolder, writer, worter)
@@ -185,7 +184,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--lr",
         type=float,
-        default=0.0001,
+        default=1e-3,
         help="initial learning rate (default: 0.001)",
     )
     parser.add_argument(

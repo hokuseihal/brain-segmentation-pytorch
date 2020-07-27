@@ -41,8 +41,8 @@ class MulticlassCrackDataset(torch.utils.data.Dataset):
         self.transform=transform if transform is not None else Compose([Resize((256,256)),ColorJitter(),ToTensor()])
         self.random=random
         self.pretransforms=Compose([Crops(self)])
-        self.posttransforms=Compose([PositionJitter(3,1)])
-        # self.posttransforms=Compose([])
+        # self.posttransforms=Compose([PositionJitter(3,1)])
+        self.posttransforms=Compose([])
         self.split=split
     def __len__(self):
         if self.train:
