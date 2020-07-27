@@ -76,7 +76,7 @@ def main(args):
         unet = torch.hub.load('mateuszbuda/brain-segmentation-pytorch', 'unet',
                               in_channels=3, out_channels=1, init_features=32, pretrained=True)
         unet = wrapped_UNet(unet, 1, 3)
-    discriminator=Discriminator(3).to(device)
+    discriminator=Discriminator(3*2).to(device)
     writer = {}
     worter = {}
     preepoch = 0
@@ -125,16 +125,16 @@ def main(args):
                     y_pred = unet(x)
 
                     gan_x=onehot(y_true)
-                    d_fake_out=discriminator(y_pred).mean()
+                    d_fake_out=discriminator(torch.cat([x,y_pred],dim=1)).mean()
                     if i%2==0:
                         print('\nd')
-                        d_real_out=discriminator(gan_x).mean()
+                        d_real_out=discriminator(torch.cat([x,gan_x],dim=1)).mean()
 
                         print(f'{epoch}:{i}/{len(loaders[phase])} EMD:{(d_real_out-d_fake_out).item():.4f}, d_real:{d_real_out.item():.4f}, d_fake:{d_fake_out.item():.4f}')
                         addvalue(writer,f'd_real:{phase}',d_real_out.item(),epoch)
 
                         if phase == "train":
-                            gradient_penalty=calculate_gradient_penalty(discriminator,gan_x,y_pred)
+                            gradient_penalty=calculate_gradient_penalty(discriminator,torch.cat([x,gan_x],dim=1),torch.cat([x,y_pred],dim=1))
                             addvalue(writer,f'DLoss:{phase}',d_real_out-d_fake_out+gradient_penalty,epoch)
                             print(f' gp:{gradient_penalty.item():.4f}')
                             addvalue(writer, f'gp:{phase}', gradient_penalty, epoch)
