@@ -126,7 +126,7 @@ def main(args):
 
                     gan_x=onehot(y_true)
                     d_fake_out=discriminator(torch.cat([x,y_pred],dim=1)).mean()
-                    if i%2==0:
+                    if i%args.num_d_train!=0:
                         print('\nd')
                         d_real_out=discriminator(torch.cat([x,gan_x],dim=1)).mean()
 
@@ -134,7 +134,7 @@ def main(args):
                         addvalue(writer,f'd_real:{phase}',d_real_out.item(),epoch)
 
                         if phase == "train":
-                            gradient_penalty=calculate_gradient_penalty(discriminator,gan_x,y_pred)
+                            gradient_penalty=calculate_gradient_penalty(discriminator,torch.cat([x,gan_x],dim=1),torch.cat([x,y_pred],dim=1))
                             addvalue(writer,f'EMD:{phase}',d_real_out-d_fake_out,epoch)
                             print(f' gp:{gradient_penalty.item():.4f}')
                             addvalue(writer, f'gp:{phase}', gradient_penalty, epoch)
@@ -262,6 +262,11 @@ if __name__ == "__main__":
         '--resize',
         default=False,
         action='store_true'
+    )
+    parser.add_argument(
+        '--num_d_train',
+        default=2,
+        type=int
     )
     args = parser.parse_args()
     args.num_train = args.split
