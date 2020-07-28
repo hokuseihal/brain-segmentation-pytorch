@@ -134,8 +134,8 @@ def main(args):
                         addvalue(writer,f'd_real:{phase}',d_real_out.item(),epoch)
 
                         if phase == "train":
-                            gradient_penalty=calculate_gradient_penalty(discriminator,torch.cat([x,gan_x],dim=1),torch.cat([x,y_pred],dim=1))
-                            addvalue(writer,f'DLoss:{phase}',d_real_out-d_fake_out+gradient_penalty,epoch)
+                            gradient_penalty=calculate_gradient_penalty(discriminator,gan_x,y_pred)
+                            addvalue(writer,f'EMD:{phase}',d_real_out-d_fake_out,epoch)
                             print(f' gp:{gradient_penalty.item():.4f}')
                             addvalue(writer, f'gp:{phase}', gradient_penalty, epoch)
                             (-d_real_out+d_fake_out+gradient_penalty).backward()
