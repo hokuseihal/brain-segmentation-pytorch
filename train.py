@@ -139,7 +139,7 @@ def main(args):
 
                     addvalue(writer,f'd_real:{phase}',d_real_out.item(),epoch)
                     addvalue(writer,f'd_fake:{phase}',d_fake_out.item(),epoch)
-                    if phase=='train':addvalue(writer,f'EMDLoss:{phase}',d_real_out-d_fake_out+gradient_penalty,epoch)
+                    if phase=='train':addvalue(writer,f'EMD:{phase}',d_real_out-d_fake_out,epoch)
 
                     loss = lossf(y_pred, y_true)
 
