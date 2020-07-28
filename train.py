@@ -126,7 +126,7 @@ def main(args):
 
                     gan_x=onehot(y_true)
                     d_fake_out=discriminator(y_pred).mean()
-                    if i%2==0:
+                    if i%args.num_d_train!=0:
                         print('\nd')
                         d_real_out=discriminator(gan_x).mean()
 
@@ -262,6 +262,11 @@ if __name__ == "__main__":
         '--resize',
         default=False,
         action='store_true'
+    )
+    parser.add_argument(
+        '--num_d_train',
+        default=2,
+        type=int
     )
     args = parser.parse_args()
     args.num_train = args.split
