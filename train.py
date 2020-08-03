@@ -145,11 +145,11 @@ def main(args):
                     else:
                         print('\ng')
                         print(f'{epoch}:{i}/{len(loaders[phase])} d_fake:{d_fake_out.item():.4f}')
-                        if args.enable_ce_loss:
+                        if args.lambda_ce!=0:
                             celoss=F.cross_entropy(y_pred,y_true)
                             print(f'celoss:{celoss.item():.4f}')
                             if phase=='train':
-                                celoss.backward(retain_graph=True)
+                                (args.lambda_ce*celoss).backward(retain_graph=True)
                                 addvalue(writer,f'celoss:{phase}',celoss.item(),epoch)
                         if phase == "train":
                             (-d_fake_out).backward()
@@ -276,9 +276,9 @@ if __name__ == "__main__":
         type=int
     )
     parser.add_argument(
-        '--enable_ce_loss',
-        default=False,
-        action='store_true'
+        '--lambda_ce',
+        default=0,
+        type=float
     )
     args = parser.parse_args()
     args.num_train = args.split
