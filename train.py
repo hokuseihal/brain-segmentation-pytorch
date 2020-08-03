@@ -139,7 +139,7 @@ def main(args):
                             addvalue(writer,f'EMD:{phase}',d_real_out-d_fake_out,epoch)
                             print(f' gp:{gradient_penalty.item():.4f}')
                             addvalue(writer, f'gp:{phase}', gradient_penalty, epoch)
-                            (-d_real_out+d_fake_out+gradient_penalty).backward()
+                            ((-d_real_out+d_fake_out+gradient_penalty)*args.lambda_adv).backward()
                             d_optimizer.step()
                             print('d_step')
                     else:
@@ -152,7 +152,7 @@ def main(args):
                                 (args.lambda_ce*celoss).backward(retain_graph=True)
                                 addvalue(writer,f'celoss:{phase}',celoss.item(),epoch)
                         if phase == "train":
-                            (-d_fake_out).backward()
+                            (-d_fake_out*args.lambda_adv).backward()
                             g_optimizer.step()
                             print('g_step')
                     if phase=='train': addvalue(writer, f'd_fake:{phase}', d_fake_out.item(), epoch)
@@ -279,6 +279,11 @@ if __name__ == "__main__":
     parser.add_argument(
         '--lambda_ce',
         default=0,
+        type=float
+    )
+    parser.add_argument(
+        '--lambda_adv',
+        default=1,
         type=float
     )
     args = parser.parse_args()
