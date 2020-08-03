@@ -1,4 +1,5 @@
 import argparse
+import torch.nn.functional as F
 import os
 import random
 import glob
@@ -144,6 +145,12 @@ def main(args):
                     else:
                         print('\ng')
                         print(f'{epoch}:{i}/{len(loaders[phase])} d_fake:{d_fake_out.item():.4f}')
+                        if args.lambda_ce!=0:
+                            celoss=F.cross_entropy(y_pred,y_true)
+                            print(f'celoss:{celoss.item():.4f}')
+                            if phase=='train':
+                                (args.lambda_ce*celoss).backward(retain_graph=True)
+                                addvalue(writer,f'celoss:{phase}',celoss.item(),epoch)
                         if phase == "train":
                             (-d_fake_out).backward()
                             g_optimizer.step()
@@ -267,6 +274,11 @@ if __name__ == "__main__":
         '--num_d_train',
         default=2,
         type=int
+    )
+    parser.add_argument(
+        '--lambda_ce',
+        default=0,
+        type=float
     )
     args = parser.parse_args()
     args.num_train = args.split
