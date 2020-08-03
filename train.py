@@ -7,6 +7,7 @@ from multiprocessing import cpu_count
 import numpy as np
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 import torch.optim as optim
 from torchvision.utils import save_image
 
@@ -144,6 +145,12 @@ def main(args):
                     else:
                         print('\ng')
                         print(f'{epoch}:{i}/{len(loaders[phase])} d_fake:{d_fake_out.item():.4f}')
+                        if args.enable_ce_loss:
+                            celoss=F.cross_entropy(y_pred,y_true)
+                            print(f'celoss:{celoss.item():.4f}')
+                            if phase=='train':
+                                celoss.backward(retain_graph=True)
+                                addvalue(writer,f'celoss:{phase}',celoss.item(),epoch)
                         if phase == "train":
                             (-d_fake_out).backward()
                             g_optimizer.step()
@@ -267,6 +274,11 @@ if __name__ == "__main__":
         '--num_d_train',
         default=2,
         type=int
+    )
+    parser.add_argument(
+        '--enable_ce_loss',
+        default=False,
+        action='store_true'
     )
     args = parser.parse_args()
     args.num_train = args.split
