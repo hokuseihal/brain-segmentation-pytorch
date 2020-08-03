@@ -6,6 +6,7 @@ from multiprocessing import cpu_count
 
 import numpy as np
 import torch
+import torch.nn.functional as F
 import torch.nn as nn
 import torch.optim as optim
 from torchvision.utils import save_image
@@ -26,7 +27,8 @@ def setcolor(idxtendor, colors):
         for idx, color in enumerate(colors, 1):
             colimg[b, :, idxtendor[b] == idx] = (color.view(3, 1)).to(idxtendor.device).float()
     return colimg
-
+def onehot(x,num_class=3):
+    return torch.eye(num_class)[x].permute(0,3,1,2).to(x.device)
 
 
 
@@ -70,6 +72,8 @@ def main(args):
         lossf = nn.CrossEntropyLoss()
     elif args.loss == 'Focal':
         lossf = FocalLoss()
+    elif args.loss=='L1':
+        lossf=lambda output,target:F.l1_loss(output,onehot(target))
     else:
         assert False, 'set correct loss.'
 
@@ -99,7 +103,6 @@ def main(args):
 
                     loss = lossf(y_pred, y_true)
                     losslist += [loss.item()]
-                    print(loss)
                     if phase == "train":
                         loss.backward()
                         optimizer.step()
