@@ -168,6 +168,7 @@ def main(args):
             print(f'{epoch=}/{args.epochs}:{phase}:{np.mean(losslist):.4f}')
             if phase == "valid":
                 addvalue(writer, 'acc:miou', np.mean(valid_miou), epoch)
+                print(f'miou:{np.mean(valid_miou):.4f}')
                 print((prmap / (len(loaders[phase]) + 1)).int())
         save(epoch, unet, args.savefolder, writer, worter)
 
