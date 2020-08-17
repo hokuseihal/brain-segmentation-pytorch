@@ -33,7 +33,7 @@ class Generator(torch.nn.Module):
         return self.output(x)
 
 
-class Discriminator(torch.nn.Module):
+class W_Discriminator(torch.nn.Module):
     def __init__(self, channels):
         super().__init__()
         # Filters [256, 512, 1024]
@@ -67,3 +67,32 @@ class Discriminator(torch.nn.Module):
     def forward(self, x):
         x = self.main_module(x)
         return self.output(x)
+
+class DC_Discriminator(nn.Module):
+    def __init__(self, channels):
+        super(DC_Discriminator, self).__init__()
+        ndf=64
+        self.channels = channels
+        self.main = nn.Sequential(
+            # input is (nc) x 64 x 64
+            nn.Conv2d(self.channels, ndf, 4,3, bias=False),
+            nn.LeakyReLU(0.2, inplace=True),
+            # state size. (ndf) x 32 x 32
+            nn.Conv2d(ndf, ndf * 2, 4,3, bias=False),
+            nn.BatchNorm2d(ndf * 2),
+            nn.LeakyReLU(0.2, inplace=True),
+            # state size. (ndf*2) x 16 x 16
+            nn.Conv2d(ndf * 2, ndf * 4, 4,2, bias=False),
+            nn.BatchNorm2d(ndf * 4),
+            nn.LeakyReLU(0.2, inplace=True),
+            # state size. (ndf*4) x 8 x 8
+            nn.Conv2d(ndf * 4, ndf * 8, 4, 2,bias=False),
+            nn.BatchNorm2d(ndf * 8),
+            nn.LeakyReLU(0.2, inplace=True),
+            # state size. (ndf*8) x 4 x 4
+            nn.Conv2d(ndf * 8, 1, 4, 2,bias=False),
+            nn.Sigmoid()
+        )
+
+    def forward(self, input):
+        return self.main(input)

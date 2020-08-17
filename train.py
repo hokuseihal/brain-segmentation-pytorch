@@ -16,7 +16,7 @@ from loss import DiceLoss, FocalLoss
 from unet import UNet, wrapped_UNet
 from utils.own import MulticlassCrackDataset as Dataset
 from utils.util import miouf, prmaper
-from gan import Discriminator
+from gan import DC_Discriminator
 from radam import RAdam
 from torch import autograd
 from torch.autograd import Variable
@@ -77,7 +77,7 @@ def main(args):
         unet = torch.hub.load('mateuszbuda/brain-segmentation-pytorch', 'unet',
                               in_channels=3, out_channels=1, init_features=32, pretrained=True)
         unet = wrapped_UNet(unet, 1, 3)
-    discriminator=Discriminator(3*2).to(device)
+    discriminator=DC_Discriminator(3 * 2).to(device)
     writer = {}
     worter = {}
     preepoch = 0
@@ -126,25 +126,26 @@ def main(args):
                     y_pred = unet(x)
 
                     gan_x=onehot(y_true)
-                    d_fake_out=discriminator(torch.cat([x,y_pred],dim=1)).mean()
+                    d_fake_out=discriminator(torch.cat([x,y_pred],dim=1))
                     if i%args.num_d_train!=0:
                         print('\nd')
-                        d_real_out=discriminator(torch.cat([x,gan_x],dim=1)).mean()
+                        fakeloss=F.binary_cross_entropy(d_fake_out,torch.zeros(args.batchsize).to(device))
+                        addvalue(writer, f'd_fake:{phase}', fakeloss.item(), epoch)
 
-                        print(f'{epoch}:{i}/{len(loaders[phase])} EMD:{(d_real_out-d_fake_out).item():.4f}, d_real:{d_real_out.item():.4f}, d_fake:{d_fake_out.item():.4f}')
-                        addvalue(writer,f'd_real:{phase}',d_real_out.item(),epoch)
-
+                        d_real_out=discriminator(torch.cat([x,gan_x],dim=1))
+                        realloss=F.binary_cross_entropy(d_real_out,torch.ones(args.batchsize).to(device))
+                        print(f'{epoch}:{i}/{len(loaders[phase])}, d_real:{realloss.item():.4f}, d_fake:{fakeloss.item():.4f}')
+                        addvalue(writer,f'd_real:{phase}',realloss.item(),epoch)
+                        addvalue(writer, f'd_fake:{phase}', fakeloss.item(), epoch)
                         if phase == "train":
-                            gradient_penalty=calculate_gradient_penalty(discriminator,torch.cat([x,gan_x],dim=1),torch.cat([x,y_pred],dim=1))
-                            addvalue(writer,f'EMD:{phase}',d_real_out-d_fake_out,epoch)
-                            print(f' gp:{gradient_penalty.item():.4f}')
-                            addvalue(writer, f'gp:{phase}', gradient_penalty, epoch)
-                            ((-d_real_out+d_fake_out+gradient_penalty)*args.lambda_adv).backward()
+                            (realloss+fakeloss).backward()
                             d_optimizer.step()
                             print('d_step')
                     else:
                         print('\ng')
-                        print(f'{epoch}:{i}/{len(loaders[phase])} d_fake:{d_fake_out.item():.4f}')
+                        fakeloss=F.binary_cross_entropy(d_fake_out,torch.ones(args.batchsize).to(device))
+                        addvalue(writer, f'g_fake:{phase}', fakeloss.item(), epoch)
+                        print(f'{epoch}:{i}/{len(loaders[phase])} g_fake:{fakeloss.item():.4f}')
                         if args.lambda_ce!=0:
                             celoss=F.cross_entropy(y_pred,y_true)
                             print(f'celoss:{celoss.item():.4f}')
@@ -152,10 +153,9 @@ def main(args):
                                 (args.lambda_ce*celoss).backward(retain_graph=True)
                                 addvalue(writer,f'celoss:{phase}',celoss.item(),epoch)
                         if phase == "train":
-                            (-d_fake_out*args.lambda_adv).backward()
+                            fakeloss.backward()
                             g_optimizer.step()
                             print('g_step')
-                    if phase=='train': addvalue(writer, f'd_fake:{phase}', d_fake_out.item(), epoch)
                     if phase == "valid":
                         miou = miouf(y_pred, y_true, len(traindataset.clscolor)).item()
                         valid_miou += [miou]
