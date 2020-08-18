@@ -166,7 +166,7 @@ def main(args):
                                 [x, setcolor(y_true, traindataset.clscolor),
                                  setcolor(y_pred.argmax(1), traindataset.clscolor)],
                                 dim=2), f'{args.savefolder}/{epoch}.jpg')
-            print(f'{epoch=}/{args.epochs}:{phase}:{np.mean(losslist):.4f}')
+            print(f'{epoch=}/{args.epochs}:{phase}')
             if phase == "valid":
                 addvalue(writer, 'acc:miou', np.mean(valid_miou), epoch)
                 print(f'miou:{np.mean(valid_miou):.4f}')
