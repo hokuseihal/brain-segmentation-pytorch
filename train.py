@@ -119,6 +119,7 @@ def main(args):
             for i, data in enumerate(loaders[phase]):
                 x, y_true = data
                 x, y_true = x.to(device), y_true.to(device)
+                B,C,H,W=x.shape
                 g_optimizer.zero_grad()
                 d_optimizer.zero_grad()
 
@@ -129,11 +130,11 @@ def main(args):
                     d_fake_out=discriminator(torch.cat([x,y_pred],dim=1))
                     if i%args.num_d_train!=0:
                         print('\nd')
-                        fakeloss=F.binary_cross_entropy(d_fake_out,torch.zeros(args.batchsize).to(device))
+                        fakeloss=F.binary_cross_entropy(d_fake_out,torch.zeros(B).to(device))
                         addvalue(writer, f'd_fake:{phase}', fakeloss.item(), epoch)
 
                         d_real_out=discriminator(torch.cat([x,gan_x],dim=1))
-                        realloss=F.binary_cross_entropy(d_real_out,torch.ones(args.batchsize).to(device))
+                        realloss=F.binary_cross_entropy(d_real_out,torch.ones(B).to(device))
                         print(f'{epoch}:{i}/{len(loaders[phase])}, d_real:{realloss.item():.4f}, d_fake:{fakeloss.item():.4f}')
                         addvalue(writer,f'd_real:{phase}',realloss.item(),epoch)
                         addvalue(writer, f'd_fake:{phase}', fakeloss.item(), epoch)
@@ -143,7 +144,7 @@ def main(args):
                             print('d_step')
                     else:
                         print('\ng')
-                        fakeloss=F.binary_cross_entropy(d_fake_out,torch.ones(args.batchsize).to(device))
+                        fakeloss=F.binary_cross_entropy(d_fake_out,torch.ones(B).to(device))
                         addvalue(writer, f'g_fake:{phase}', fakeloss.item(), epoch)
                         print(f'{epoch}:{i}/{len(loaders[phase])} g_fake:{fakeloss.item():.4f}')
                         if args.lambda_ce!=0:
