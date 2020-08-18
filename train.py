@@ -99,8 +99,8 @@ def main(args):
     loaders = {'train': trainloader, 'valid': validloader}
     if args.saveimg: unet.savefolder = args.savefolder
 
-    g_optimizer = RAdam(unet.parameters(), lr=args.lr)
-    d_optimizer=RAdam(discriminator.parameters())
+    g_optimizer = RAdam(unet.parameters(), lr=1e-3)
+    d_optimizer=RAdam(discriminator.parameters(),lr=1e-5)
 
     os.makedirs(args.savefolder, exist_ok=True)
     print('start train')
