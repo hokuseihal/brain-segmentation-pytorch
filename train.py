@@ -89,8 +89,9 @@ def main(args):
         print('load model')
     elif args.pretrained_G!='none' and load_check(args.pretrained_G):
         saved=load(args.pretrained_G)
-        writer, preepoch, modelpath, _ = saved['writer'], saved['epoch'], saved['modelpath'], saved['worter']
+        writer, preepoch, modelpath, worter = saved['writer'], saved['epoch'], saved['modelpath'], saved['worter']
         trainmask, validmask = worter['trainmask'], worter['validmask']
+        worter={}
         unet.load_state_dict(torch.load(modelpath))
         print('load model G')
     unet.to(device)
