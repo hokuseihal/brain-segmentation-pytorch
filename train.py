@@ -89,9 +89,10 @@ def main(args):
         print('load model')
     elif args.pretrained_G!='none' and load_check(args.pretrained_G):
         saved=load(args.pretrained_G)
-        writer, preepoch, modelpath, worter = saved['writer'], saved['epoch'], saved['modelpath'], saved['worter']
+        writer, _, modelpath, worter = saved['writer'], saved['epoch'], saved['modelpath'], saved['worter']
         trainmask, validmask = worter['trainmask'], worter['validmask']
         worter={}
+        writer={}
         unet.load_state_dict(torch.load(modelpath))
         print('load model G')
     unet.to(device)
@@ -134,9 +135,9 @@ def main(args):
                     y_pred = unet(x)
 
                     gan_x=onehot(y_true)
-                    d_fake_out=discriminator(torch.cat([x,y_pred],dim=1))
                     if i%args.num_d_train!=0:
                         print('\nd')
+                        d_fake_out=discriminator(torch.cat([x,y_pred.detach()],dim=1))
                         fakeloss=F.binary_cross_entropy(d_fake_out,torch.zeros(B).to(device))
                         addvalue(writer, f'd_fake:{phase}', fakeloss.item(), epoch)
 
@@ -151,7 +152,8 @@ def main(args):
                             print('d_step')
                     else:
                         print('\ng')
-                        fakeloss=F.binary_cross_entropy(d_fake_out,torch.ones(B).to(device))
+                        d_fake_out=discriminator(torch.cat([x,y_pred],dim=1))
+                        fakeloss=-F.binary_cross_entropy(d_fake_out,torch.zeros(B).to(device))
                         addvalue(writer, f'g_fake:{phase}', fakeloss.item(), epoch)
                         print(f'{epoch}:{i}/{len(loaders[phase])} g_fake:{fakeloss.item():.4f}')
                         if args.lambda_ce!=0:
@@ -161,7 +163,7 @@ def main(args):
                                 (args.lambda_ce*celoss).backward(retain_graph=True)
                                 addvalue(writer,f'celoss:{phase}',celoss.item(),epoch)
                         if phase == "train":
-                            fakeloss.backward()
+                            (args.lambda_adv*fakeloss).backward()
                             g_optimizer.step()
                             print('g_step')
                     if phase == "valid":
@@ -179,6 +181,8 @@ def main(args):
                 print(f'miou:{np.mean(valid_miou):.4f}')
                 print((prmap / (len(loaders[phase]) + 1)).int())
         save(epoch, unet, args.savefolder, writer, worter)
+        torch.save(discriminator.state_dict(),f'{args.savefolder}/dis.pth')
+
 
 
 if __name__ == "__main__":
