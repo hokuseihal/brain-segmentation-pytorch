@@ -94,8 +94,6 @@ def main(args):
         unet.load_state_dict(torch.load(modelpath))
         print('load model G')
     unet.to(device)
-    if args.pretrained_G !='none':
-        unet.load_state_dict(torch.load(args.pretrained_G))
     saveworter(worter, 'trainmask', trainmask)
     saveworter(worter, 'validmask', validmask)
     traindataset = Dataset(trainmask, train=True, random=args.random, split=args.split)
