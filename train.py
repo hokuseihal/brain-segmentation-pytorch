@@ -87,6 +87,12 @@ def main(args):
         trainmask, validmask = worter['trainmask'], worter['validmask']
         unet.load_state_dict(torch.load(modelpath))
         print('load model')
+    elif args.pretrained_G!='none' and load_check(args.pretrained_G):
+        saved=load(args.pretrained_G)
+        writer, preepoch, modelpath, _ = saved['writer'], saved['epoch'], saved['modelpath'], saved['worter']
+        trainmask, validmask = worter['trainmask'], worter['validmask']
+        unet.load_state_dict(torch.load(modelpath))
+        print('load model G')
     unet.to(device)
     if args.pretrained_G !='none':
         unet.load_state_dict(torch.load(args.pretrained_G))
@@ -102,7 +108,7 @@ def main(args):
     if args.saveimg: unet.savefolder = args.savefolder
 
     g_optimizer = RAdam(unet.parameters(), lr=1e-3)
-    d_optimizer=RAdam(discriminator.parameters(),lr=1e-5)
+    d_optimizer=RAdam(discriminator.parameters(),lr=1e-3)
 
     os.makedirs(args.savefolder, exist_ok=True)
     print('start train')
