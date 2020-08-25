@@ -82,6 +82,14 @@ def main(args):
     writer = {}
     worter = {}
     preepoch = 0
+
+    def dis_hinge(dis_fake, dis_real):
+        loss = torch.mean(torch.relu(1. - dis_real)) + \
+               torch.mean(torch.relu(1. + dis_fake))
+        return loss
+
+    def gen_hinge(dis_fake, dis_real=None):
+        return -torch.mean(dis_fake)
     if args.resume and load_check(args.savefolder):
         saved = load(args.savefolder)
         writer, preepoch, modelpath, worter = saved['writer'], saved['epoch'], saved['modelpath'], saved['worter']
@@ -138,11 +146,13 @@ def main(args):
                     if i%args.num_d_train!=0:
                         print('\nd')
                         d_fake_out=discriminator(torch.cat([x,y_pred.detach()],dim=1))
-                        fakeloss=F.binary_cross_entropy(d_fake_out,torch.zeros(B).to(device))
+                        # fakeloss=F.binary_cross_entropy(d_fake_out,torch.zeros(B).to(device))
+                        fakeloss=F.relu(1.+d_fake_out).mean()
                         addvalue(writer, f'd_fake:{phase}', fakeloss.item(), epoch)
 
                         d_real_out=discriminator(torch.cat([x,gan_x],dim=1))
-                        realloss=F.binary_cross_entropy(d_real_out,torch.ones(B).to(device))
+                        # realloss=F.binary_cross_entropy(d_real_out,torch.ones(B).to(device))
+                        realloss=F.relu(1.-d_real_out).mean()
                         print(f'{epoch}:{i}/{len(loaders[phase])}, d_real:{realloss.item():.4f}, d_fake:{fakeloss.item():.4f}')
                         addvalue(writer,f'd_real:{phase}',realloss.item(),epoch)
                         addvalue(writer, f'd_fake:{phase}', fakeloss.item(), epoch)
@@ -153,17 +163,17 @@ def main(args):
                     else:
                         print('\ng')
                         d_fake_out=discriminator(torch.cat([x,y_pred],dim=1))
-                        fakeloss=F.binary_cross_entropy(d_fake_out,torch.ones(B).to(device))
+                        # fakeloss=F.binary_cross_entropy(d_fake_out,torch.ones(B).to(device))
+                        fakeloss=-(d_fake_out).mean()
                         addvalue(writer, f'g_fake:{phase}', fakeloss.item(), epoch)
                         print(f'{epoch}:{i}/{len(loaders[phase])} g_fake:{fakeloss.item():.4f}')
                         if args.lambda_ce!=0:
                             celoss=F.cross_entropy(y_pred,y_true)
                             print(f'celoss:{celoss.item():.4f}')
                             if phase=='train':
-                                (args.lambda_ce*celoss).backward(retain_graph=True)
                                 addvalue(writer,f'celoss:{phase}',celoss.item(),epoch)
                         if phase == "train":
-                            (args.lambda_adv*fakeloss).backward()
+                            (args.lambda_adv*fakeloss+args.lambda_ce*celoss).backward()
                             g_optimizer.step()
                             print('g_step')
                     if phase == "valid":

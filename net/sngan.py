@@ -51,7 +51,7 @@ class SNResNetDiscriminator(nn.Module):
         output = self.l6(h)
         if y is not None:
             output += torch.sum(self.l_y(y) * h, dim=1, keepdim=True)
-        return torch.sigmoid(output)
+        return output
 
 if __name__=='__main__':
     model=SNResNetDiscriminator()
