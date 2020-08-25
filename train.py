@@ -3,6 +3,7 @@ import torch.nn.functional as F
 import os
 import random
 import glob
+from net.sngan import SNResNetDiscriminator
 from multiprocessing import cpu_count
 
 import numpy as np
@@ -77,9 +78,7 @@ def main(args):
         unet = torch.hub.load('mateuszbuda/brain-segmentation-pytorch', 'unet',
                               in_channels=3, out_channels=1, init_features=32, pretrained=True)
         unet = wrapped_UNet(unet, 1, 3)
-    discriminator=DC_Discriminator(3 * 2).to(device)
-    discriminator.load_state_dict(torch.load("dis.pth"))
-    print('load pretraind D')
+    discriminator=SNResNetDiscriminator(in_ch=6).to(device)
     writer = {}
     worter = {}
     preepoch = 0
