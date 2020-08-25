@@ -14,7 +14,7 @@ from torchvision.utils import save_image
 from core import save, addvalue, load, load_check, saveworter
 from loss import DiceLoss, FocalLoss
 from unet import UNet, wrapped_UNet
-from utils.own import MulticlassCrackDataset as Dataset
+from utils.dataset import MulticlassCrackDataset as Dataset
 from utils.util import miouf, prmaper
 from gan import DC_Discriminator
 from radam import RAdam
@@ -78,6 +78,8 @@ def main(args):
                               in_channels=3, out_channels=1, init_features=32, pretrained=True)
         unet = wrapped_UNet(unet, 1, 3)
     discriminator=DC_Discriminator(3 * 2).to(device)
+    discriminator.load_state_dict(torch.load("dis.pth"))
+    print('load pretraind D')
     writer = {}
     worter = {}
     preepoch = 0
@@ -107,13 +109,12 @@ def main(args):
     loaders = {'train': trainloader, 'valid': validloader}
     if args.saveimg: unet.savefolder = args.savefolder
 
-    g_optimizer = RAdam(unet.parameters(), lr=1e-3)
+    g_optimizer = RAdam(unet.parameters(), lr=1e-4)
     d_optimizer=RAdam(discriminator.parameters(),lr=1e-3)
 
     os.makedirs(args.savefolder, exist_ok=True)
     print('start train')
     for epoch in range(preepoch, args.epochs):
-        losslist = []
         valid_miou = []
         for phase in ["train"] * args.num_train + ["valid"]:
             prmap = torch.zeros(len(traindataset.clscolor), len(traindataset.clscolor))
@@ -153,7 +154,7 @@ def main(args):
                     else:
                         print('\ng')
                         d_fake_out=discriminator(torch.cat([x,y_pred],dim=1))
-                        fakeloss=-F.binary_cross_entropy(d_fake_out,torch.zeros(B).to(device))
+                        fakeloss=F.binary_cross_entropy(d_fake_out,torch.ones(B).to(device))
                         addvalue(writer, f'g_fake:{phase}', fakeloss.item(), epoch)
                         print(f'{epoch}:{i}/{len(loaders[phase])} g_fake:{fakeloss.item():.4f}')
                         if args.lambda_ce!=0:
