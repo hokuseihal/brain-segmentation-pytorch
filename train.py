@@ -278,7 +278,7 @@ if __name__ == "__main__":
     )
     parser.add_argument(
         '--lambda_ce',
-        default=0,
+        default=1,
         type=float
     )
     parser.add_argument(
