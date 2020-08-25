@@ -78,18 +78,11 @@ def main(args):
         unet = torch.hub.load('mateuszbuda/brain-segmentation-pytorch', 'unet',
                               in_channels=3, out_channels=1, init_features=32, pretrained=True)
         unet = wrapped_UNet(unet, 1, 3)
-    discriminator=SNResNetDiscriminator(in_ch=6).to(device)
+    discriminator=SNResNetDiscriminator().to(device)
     writer = {}
     worter = {}
     preepoch = 0
 
-    def dis_hinge(dis_fake, dis_real):
-        loss = torch.mean(torch.relu(1. - dis_real)) + \
-               torch.mean(torch.relu(1. + dis_fake))
-        return loss
-
-    def gen_hinge(dis_fake, dis_real=None):
-        return -torch.mean(dis_fake)
     if args.resume and load_check(args.savefolder):
         saved = load(args.savefolder)
         writer, preepoch, modelpath, worter = saved['writer'], saved['epoch'], saved['modelpath'], saved['worter']
@@ -118,7 +111,6 @@ def main(args):
 
     g_optimizer = RAdam(unet.parameters(), lr=1e-3)
     d_optimizer=RAdam(discriminator.parameters(),lr=1e-3)
-    miou=0
     os.makedirs(args.savefolder, exist_ok=True)
     print('start train')
     for epoch in range(preepoch, args.epochs):
@@ -145,12 +137,13 @@ def main(args):
                     gan_x=onehot(y_true)
                     if i%args.num_d_train!=0:
                         print('\nd')
-                        d_fake_out=discriminator(torch.cat([x,y_pred.detach()],dim=1))
+                        d_fake_out=discriminator(y_pred.detach())
                         # fakeloss=F.binary_cross_entropy(d_fake_out,torch.zeros(B).to(device))
                         fakeloss=F.relu(1.+d_fake_out).mean()
                         addvalue(writer, f'd_fake:{phase}', fakeloss.item(), epoch)
 
-                        d_real_out=discriminator(torch.cat([x,gan_x],dim=1))
+                        # d_real_out=discriminator(torch.cat([x,gan_x],dim=1))
+                        d_real_out=discriminator(gan_x)
                         # realloss=F.binary_cross_entropy(d_real_out,torch.ones(B).to(device))
                         realloss=F.relu(1.-d_real_out).mean()
                         print(f'{epoch}:{i}/{len(loaders[phase])}, d_real:{realloss.item():.4f}, d_fake:{fakeloss.item():.4f}')
@@ -162,7 +155,8 @@ def main(args):
                             print('d_step')
                     else:
                         print('\ng')
-                        d_fake_out=discriminator(torch.cat([x,y_pred],dim=1))
+                        # d_fake_out=discriminator(torch.cat([x,y_pred],dim=1))
+                        d_fake_out=discriminator(y_pred)
                         # fakeloss=F.binary_cross_entropy(d_fake_out,torch.ones(B).to(device))
                         fakeloss=-(d_fake_out).mean()
                         addvalue(writer, f'g_fake:{phase}', fakeloss.item(), epoch)
@@ -173,7 +167,7 @@ def main(args):
                             if phase=='train':
                                 addvalue(writer,f'celoss:{phase}',celoss.item(),epoch)
                         if phase == "train":
-                            lambda_adv=0 if (miou<0.4) else args.lambda_adv
+                            lambda_adv=0 if (celoss>0.575) else args.lambda_adv
                             print(lambda_adv)
                             (lambda_adv*fakeloss+args.lambda_ce*celoss).backward()
                             g_optimizer.step()
