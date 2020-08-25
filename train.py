@@ -116,7 +116,7 @@ def main(args):
     loaders = {'train': trainloader, 'valid': validloader}
     if args.saveimg: unet.savefolder = args.savefolder
 
-    g_optimizer = RAdam(unet.parameters(), lr=1e-4)
+    g_optimizer = RAdam(unet.parameters(), lr=1e-3)
     d_optimizer=RAdam(discriminator.parameters(),lr=1e-3)
 
     os.makedirs(args.savefolder, exist_ok=True)
@@ -173,7 +173,8 @@ def main(args):
                             if phase=='train':
                                 addvalue(writer,f'celoss:{phase}',celoss.item(),epoch)
                         if phase == "train":
-                            lambda_adv=args.lambda_adv if (fakeloss<5 and celoss<0.6) else 0
+                            lambda_adv=0 if (celoss>0.6) else args.lambda_adv
+                            print(lambda_adv)
                             (lambda_adv*fakeloss+args.lambda_ce*celoss).backward()
                             g_optimizer.step()
                             print('g_step')
