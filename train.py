@@ -118,7 +118,7 @@ def main(args):
 
     g_optimizer = RAdam(unet.parameters(), lr=1e-3)
     d_optimizer=RAdam(discriminator.parameters(),lr=1e-3)
-
+    miou=0
     os.makedirs(args.savefolder, exist_ok=True)
     print('start train')
     for epoch in range(preepoch, args.epochs):
@@ -173,7 +173,7 @@ def main(args):
                             if phase=='train':
                                 addvalue(writer,f'celoss:{phase}',celoss.item(),epoch)
                         if phase == "train":
-                            lambda_adv=0 if (celoss>0.56) else args.lambda_adv
+                            lambda_adv=0 if (miou<0.4) else args.lambda_adv
                             print(lambda_adv)
                             (lambda_adv*fakeloss+args.lambda_ce*celoss).backward()
                             g_optimizer.step()
