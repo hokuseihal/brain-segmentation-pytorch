@@ -173,7 +173,8 @@ def main(args):
                             if phase=='train':
                                 addvalue(writer,f'celoss:{phase}',celoss.item(),epoch)
                         if phase == "train":
-                            (args.lambda_adv*fakeloss+args.lambda_ce*celoss).backward()
+                            lambda_adv=args.lambda_adv if (fakeloss<5 and celoss<0.6) else 0
+                            (lambda_adv*fakeloss+args.lambda_ce*celoss).backward()
                             g_optimizer.step()
                             print('g_step')
                     if phase == "valid":
