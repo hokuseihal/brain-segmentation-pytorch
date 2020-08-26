@@ -112,6 +112,8 @@ def main(args):
     g_optimizer = RAdam(unet.parameters(), lr=1e-3)
     d_optimizer=RAdam(discriminator.parameters(),lr=1e-3)
     os.makedirs(args.savefolder, exist_ok=True)
+    realloss=1
+    fakeloss=1
     print('start train')
     for epoch in range(preepoch, args.epochs):
         valid_miou = []
@@ -135,7 +137,7 @@ def main(args):
                     y_pred = unet(x)
 
                     gan_x=onehot(y_true)
-                    if i%args.num_d_train!=0:
+                    if epoch==0 or (((realloss+fakeloss)>1) and (realloss*fakeloss==0)):
                         print('\nd')
                         d_fake_out=discriminator(y_pred.detach())
                         # fakeloss=F.binary_cross_entropy(d_fake_out,torch.zeros(B).to(device))
@@ -146,6 +148,8 @@ def main(args):
                         d_real_out=discriminator(gan_x)
                         # realloss=F.binary_cross_entropy(d_real_out,torch.ones(B).to(device))
                         realloss=F.relu(1.-d_real_out).mean()
+                        print(f'D:{(fakeloss+realloss).item():1.2f}')
+                        addvalue(writer,f'd:{phase}',(fakeloss+realloss).item(),epoch)
                         print(f'{epoch}:{i}/{len(loaders[phase])}, d_real:{realloss.item():.4f}, d_fake:{fakeloss.item():.4f}')
                         addvalue(writer,f'd_real:{phase}',realloss.item(),epoch)
                         addvalue(writer, f'd_fake:{phase}', fakeloss.item(), epoch)
@@ -204,7 +208,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--epochs",
         type=int,
-        default=100,
+        default=1000,
         help="number of epochs to train (default: 100)",
     )
     parser.add_argument(
