@@ -9,7 +9,7 @@ def miouf(_pred,_t_idx,numcls):
             if not (t_idx==clsidx).any():
                 continue
             iou=(((pred==clsidx) & (t_idx==clsidx)).sum())/(((pred==clsidx) | (t_idx==clsidx)).sum().float())
-            miou+=iou/(numcls-1)
+            miou+=(iou/(numcls-1)).cpu()
         return miou
 
 def prmaper(_pred,_t_idx,numcls):
