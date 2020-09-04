@@ -3,7 +3,7 @@ import torchvision
 import numpy as np
 def miouf(_pred,_t_idx,bce=False):
     pred=_pred.clone()
-    t_idx=_t_idx.clone()
+    t_idx=_t_idx.clone().unsqueeze(1)
     B,numcls,H,W=pred.shape
     if bce:numcls=2
     with torch.no_grad():

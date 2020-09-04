@@ -1,6 +1,7 @@
 import torch
 import numpy as np
 from torchvision.transforms import ToTensor,Compose,Grayscale,ToPILImage,ColorJitter
+import torchvision.transforms as T
 from utils.augmentation import Crops,PositionJitter,Elastic_Distortion,Resize
 
 import glob
@@ -28,7 +29,19 @@ class CrackDataset(torch.utils.data.Dataset):
         imraw=Image.open(self.raw[item])
         immask=Image.open(self.mask[item])
         return self.transform(imraw),self.transform(immask)
-
+class RDDDataset(torch.utils.data.Dataset):
+    def __init__(self,root):
+        self.imgs=glob.glob(f'{root}/*/images/*.jpg')
+        self.transform=Compose([T.Resize((256,256)),ToTensor()])
+        self.in_channels=3
+        self.out_channels=5
+        self.clscolor=torch.tensor([[0,0,0],[255,255,255],[0,255,0],[255,0,0],[0,0,255]])
+    def __len__(self):
+        return len(self.imgs)
+    def __getitem__(self, item):
+        im=Image.open(self.imgs[item])
+        label=torch.load(self.imgs[item].replace('jpg','pth'))
+        return self.transform(im),label
 class MulticlassCrackDataset(torch.utils.data.Dataset):
     def __init__(self,masks,transform=None,clscolor=[[0,0,0],[255,255,255],[0,255,0]],random=False,split=1,train=True,args=None):
         assert split in {1,2,4,8,16}

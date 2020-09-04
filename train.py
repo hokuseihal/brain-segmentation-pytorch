@@ -10,10 +10,10 @@ import torch.nn as nn
 import torch.optim as optim
 from torchvision.utils import save_image
 
-from core import save, addvalue, load, load_check, saveworter
+from core import save, addvalue
 from loss import DiceLoss, FocalLoss
 from unet import UNet, wrapped_UNet
-from utils.dataset import MulticlassCrackDataset as Dataset
+from utils.dataset import RDDDataset as Dataset
 from utils.util import miouf, prmaper,cal_grad_ratio
 
 
@@ -41,7 +41,7 @@ def main(args):
     validmask = sorted(list(set(masks) - set(trainmask)))
     import hashlib
     print(hashlib.md5("".join(validmask).encode()).hexdigest())
-    unet = UNet(in_channels=3, out_channels=3, cutpath=args.cutpath,dropout=args.dropout)
+    unet = UNet(in_channels=3, out_channels=5, cutpath=args.cutpath,dropout=args.dropout)
     if args.pretrained:
         unet = torch.hub.load('mateuszbuda/brain-segmentation-pytorch', 'unet',
                               in_channels=3, out_channels=1, init_features=32, pretrained=True)
@@ -49,22 +49,15 @@ def main(args):
     writer = {}
     worter = {}
     preepoch = 0
-    if args.resume and load_check(args.savefolder):
-        saved = load(args.savefolder)
-        writer, preepoch, modelpath, worter = saved['writer'], saved['epoch'], saved['modelpath'], saved['worter']
-        trainmask, validmask = worter['trainmask'], worter['validmask']
-        unet.load_state_dict(torch.load(modelpath))
-        print('load model')
     unet.to(device)
-    saveworter(worter, 'trainmask', trainmask)
-    saveworter(worter, 'validmask', validmask)
-    traindataset = Dataset(trainmask, train=True, random=args.random, split=args.split,args=args)
-    validdataset = Dataset(validmask, train=False, random=args.random, split=args.split,args=args)
+    traindataset = Dataset('../data/RDD/train')
+    # validdataset = Dataset('../data/RDD')
     trainloader = torch.utils.data.DataLoader(traindataset, batch_size=args.batchsize//args.subdivisions, shuffle=True,
                                               num_workers=args.workers)
-    validloader = torch.utils.data.DataLoader(validdataset, batch_size=args.batchsize//args.subdivisions, shuffle=True,
-                                              num_workers=args.workers)
-    loaders = {'train': trainloader, 'valid': validloader}
+    # validloader = torch.utils.data.DataLoader(validdataset, batch_size=args.batchsize//args.subdivisions, shuffle=True,
+    #                                           num_workers=args.workers)
+    # loaders = {'train': trainloader, 'valid': validloader}
+    loaders = {'train': trainloader, }
     if args.saveimg: unet.savefolder = args.savefolder
     if args.loss == 'DSC':
         lossf = DiceLoss()
@@ -79,7 +72,7 @@ def main(args):
 
     os.makedirs(args.savefolder, exist_ok=True)
     for epoch in range(preepoch, args.epochs):
-        for phase in ["train"] * args.num_train + ["valid"]:
+        for phase in ["train"] * args.num_train:
         # for phase in ['valid']:
             valid_miou = []
             losslist = []
@@ -93,24 +86,12 @@ def main(args):
             else:
                 unet.eval()
             for batchidx, data in enumerate(loaders[phase]):
+                print(f'{phase}:{batchidx}/{len(loaders[phase])}:{epoch}/{args.epochs}')
                 x, y_true = data
                 x, y_true = x.to(device), y_true.to(device).float()
                 with torch.set_grad_enabled(phase == "train"):
-                    if args.mixup and phase=='train':
-                        if args.alpha > 0:
-                            lam = np.random.beta(args.alpha, args.alpha)
-                        else:
-                            lam = 1
-                        rndidx=np.random.permutation(range(x.shape[0]))
-                        x=lam*x+(1-lam)*x[rndidx]
-                        from torchvision.transforms import ToPILImage
-                        # ToPILImage()(x[0].detach().cpu()).show()
-                        # exit()
-                        y_pred = unet(x)
-                        loss=lam*lossf(y_pred,y_true)+(1-lam)*lossf(y_pred,y_true[rndidx])
-                    else:
-                        y_pred=unet(x)
-                        loss = lossf(y_pred, y_true.long())
+                    y_pred=unet(x)
+                    loss = lossf(y_pred, y_true.long())
                     losslist += [loss.item()]
                     if phase == "train":
                         # y_pred.retain_grad()
