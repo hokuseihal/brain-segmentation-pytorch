@@ -42,7 +42,7 @@ def save(e,model,fol,dic=None):
     savedmodelpath=f'{fol}/model.pth'
     if dic:
         savedic(dic,'/'.join(savedmodelpath.split('/')[:-1]))
-    #torch.save(model.state_dict(), savedmodelpath)
+    torch.save(model.state_dict(), savedmodelpath)
     with open(f'{fol}/.epoch','w') as f:
         f.write(f'{e}')
 
