@@ -65,7 +65,7 @@ def main(args):
     traindataset = Dataset(trainmask, train=True, random=args.random, split=args.split,args=args)
     validdataset = Dataset(validmask, train=False, random=args.random, split=args.split,args=args)
     #TODO DEBUG
-    linerdataset=LinerCrackDataset('/media/hokusei/回復/m 日々',(256,256))
+    linerdataset=LinerCrackDataset('../data/owncrack/liner',(256,256))
     linertraindataset,linervaldataset=torch.utils.data.random_split(linerdataset,[int(len(linerdataset)*0.8),len(linerdataset)-int(len(linerdataset)*0.8)])
     traindataset=torch.utils.data.ConcatDataset([traindataset,linertraindataset])
     validdataset=torch.utils.data.ConcatDataset([validdataset,validdataset])
