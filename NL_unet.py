@@ -6,10 +6,10 @@ from non_local_dot_product import NONLocalBlock2D as NonLocalBlock
 
 class NonLocalUNet(nn.Module):
 
-    def __init__(self, features):
+    def __init__(self, inch,outch,features):
         super(NonLocalUNet, self).__init__()
-        self.in_channel = 3
-        self.out_channel = 3
+        self.in_channel = inch
+        self.out_channel = outch
         self.features = features
         self.block_sizes = [1, 1, 1]
         self.block_strides = [1, 2, 2]

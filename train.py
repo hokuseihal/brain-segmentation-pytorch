@@ -10,11 +10,14 @@ import torch.nn as nn
 import torch.optim as optim
 from torchvision.utils import save_image
 
-from core import save, addvalue, load, load_check, saveworter
+from core import save, addvalue
 from loss import DiceLoss, FocalLoss
 from unet import UNet, wrapped_UNet
 from utils.dataset import MulticlassCrackDataset as Dataset
+from utils.dataset import LinerCrackDataset
 from utils.util import miouf, prmaper,cal_grad_ratio
+
+from NL_unet import NonLocalUNet
 
 
 def setcolor(idxtendor, colors):
@@ -24,7 +27,7 @@ def setcolor(idxtendor, colors):
     colors = colors[1:]
     for b in range(B):
         for idx, color in enumerate(colors, 1):
-            colimg[b, :, idxtendor[b] == idx] = (color.view(3, 1)).to(idxtendor.device).float()
+            colimg[b, :, idxtendor[b] == idx] = (color.reshape(3, 1)).to(idxtendor.device).float()
     return colimg
 
 
@@ -41,6 +44,7 @@ def main(args):
     validmask = sorted(list(set(masks) - set(trainmask)))
     import hashlib
     print(hashlib.md5("".join(validmask).encode()).hexdigest())
+    # unet=NonLocalUNet(3,3,128)
     unet = UNet(in_channels=3, out_channels=3, cutpath=args.cutpath,dropout=args.dropout)
     if args.pretrained:
         unet = torch.hub.load('mateuszbuda/brain-segmentation-pytorch', 'unet',
@@ -49,17 +53,22 @@ def main(args):
     writer = {}
     worter = {}
     preepoch = 0
-    if args.resume and load_check(args.savefolder):
-        saved = load(args.savefolder)
-        writer, preepoch, modelpath, worter = saved['writer'], saved['epoch'], saved['modelpath'], saved['worter']
-        trainmask, validmask = worter['trainmask'], worter['validmask']
-        unet.load_state_dict(torch.load(modelpath))
-        print('load model')
+    # if args.resume and load_check(args.savefolder):
+    #     saved = load(args.savefolder)
+    #     writer, preepoch, modelpath, worter = saved['writer'], saved['epoch'], saved['modelpath'], saved['worter']
+    #     trainmask, validmask = worter['trainmask'], worter['validmask']
+    #     unet.load_state_dict(torch.load(modelpath))
+    #     print('load model')
     unet.to(device)
-    saveworter(worter, 'trainmask', trainmask)
-    saveworter(worter, 'validmask', validmask)
+    # saveworter(worter, 'trainmask', trainmask)
+    # saveworter(worter, 'validmask', validmask)
     traindataset = Dataset(trainmask, train=True, random=args.random, split=args.split,args=args)
     validdataset = Dataset(validmask, train=False, random=args.random, split=args.split,args=args)
+    #TODO DEBUG
+    linerdataset=LinerCrackDataset('/media/hokusei/回復/m 日々',(256,256))
+    linertraindataset,linervaldataset=torch.utils.data.random_split(linerdataset,[int(len(linerdataset)*0.8),len(linerdataset)-int(len(linerdataset)*0.8)])
+    traindataset=torch.utils.data.ConcatDataset([traindataset,linertraindataset])
+    validdataset=torch.utils.data.ConcatDataset([validdataset,validdataset])
     trainloader = torch.utils.data.DataLoader(traindataset, batch_size=args.batchsize//args.subdivisions, shuffle=True,
                                               num_workers=args.workers)
     validloader = torch.utils.data.DataLoader(validdataset, batch_size=args.batchsize//args.subdivisions, shuffle=True,
@@ -76,6 +85,7 @@ def main(args):
         assert False, 'set correct loss.'
 
     optimizer = optim.Adam(unet.parameters(), lr=args.lr)
+    clscolor = torch.tensor([[0, 0, 0], [255, 255, 255], [0, 255, 0]])
 
     os.makedirs(args.savefolder, exist_ok=True)
     for epoch in range(preepoch, args.epochs):
@@ -83,7 +93,7 @@ def main(args):
         # for phase in ['valid']:
             valid_miou = []
             losslist = []
-            prmap = torch.zeros(len(traindataset.clscolor), len(traindataset.clscolor))
+            prmap = torch.zeros(3, 3)
 
             if phase == "train":
                 print('start train')
@@ -125,20 +135,20 @@ def main(args):
                             optimizer.step()
                             optimizer.zero_grad()
 
-                    miou = miouf(y_pred, y_true, len(traindataset.clscolor)).item()
+                    miou = miouf(y_pred, y_true, 3).item()
                     valid_miou += [miou]
-                    prmap += prmaper(y_pred, y_true, len(traindataset.clscolor))
+                    prmap += prmaper(y_pred, y_true, 3)
                     if batchidx == 0:
                         save_image(torch.cat(
-                            [x, setcolor(y_true, traindataset.clscolor),
-                             setcolor(y_pred.argmax(1), traindataset.clscolor)],
+                            [x, setcolor(y_true, clscolor),
+                             setcolor(y_pred.argmax(1), clscolor)],
                             dim=2), f'{args.savefolder}/{epoch}.jpg')
             addvalue(writer, f'loss:{phase}', np.mean(losslist), epoch)
             print(f'{epoch=}/{args.epochs}:{phase}:{np.mean(losslist):.4f}')
             print(f'test:miou:{np.nanmean(valid_miou):.4f}')
             addvalue(writer, f'mIoU:{phase}', np.nanmean(valid_miou), epoch)
             print((prmap / ((batchidx + 1)*args.batchsize)).int())
-        save(epoch, unet, args.savefolder, writer, worter)
+        # save(epoch, unet, args.savefolder, writer, worter)
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(

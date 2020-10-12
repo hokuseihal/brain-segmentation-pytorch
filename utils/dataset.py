@@ -1,17 +1,51 @@
 import torch
 import numpy as np
 from torchvision.transforms import ToTensor,Compose,Grayscale,ToPILImage,ColorJitter
+import torchvision.transforms as T
 from utils.augmentation import Crops,PositionJitter,Elastic_Distortion,Resize
 
 import glob
 import random
 from PIL import Image
 import os
+import cv2
 def binary(x,a=.5):
     assert x.shape[0]==3
     x[x>a]=1
     x[x<a]=0
     return x
+class LinerCrackDataset(torch.utils.data.Dataset):
+    def __init__(self,root,size):
+        self.size=size
+        self.txt=glob.glob(f'{root}/*.txt')
+        self.transform=T.Compose([T.Resize(size),T.ToTensor()])
+    def __len__(self):
+        return len(self.txt)
+    def __getitem__(self,idx):
+        im=Image.open(self.txt[idx].replace('txt','jpg'))
+        mask=loadtxt(self.txt[idx])
+        mask=np.floor(cv2.resize(mask,self.size)).astype(np.int64)
+        return self.transform(im),torch.from_numpy(mask)
+def loadtxt(path):
+    thickness=21
+    def getdata(ind,sec='point'):
+        for d in data:
+            # print(d[0],ind)
+            if d[0]==ind:
+                if sec=='point':return int(d[1]),int(d[2])
+                elif sec=='cls':return int(d[3])
+        assert False,f"{d} is not found."
+    mask=np.zeros((800,800))
+    with open(path) as f:
+        data=[d.strip().split(',') for d in f.readlines()]
+    # print(data)
+    for d in data:
+        if d[-1]=='0': continue
+        if len(d)==5:
+           cv2.line(mask,(int(d[1]),int(d[2])),getdata(d[-1]),color=int(d[3])+1,thickness=thickness)
+        elif len(d)==2:
+            cv2.line(mask,getdata(d[0]),getdata(d[1]),thickness=thickness,color=getdata(d[0],'cls')+1)
+    return mask
 class CrackDataset(torch.utils.data.Dataset):
     def __init__(self,rawp,maskp,transform=None):
         self.raw=sorted(glob.glob(f'{rawp}/*'))
@@ -39,7 +73,7 @@ class MulticlassCrackDataset(torch.utils.data.Dataset):
         self.in_channels=3
         self.out_channels=3
         self.shape=(256,256)
-        self.clscolor=torch.tensor(clscolor)/255
+        self.clscolor=torch.tensor(clscolor)//255
         self.random=random
         _transform=[]
         _posttransforms=[]
