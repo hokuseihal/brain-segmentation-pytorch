@@ -129,7 +129,7 @@ def main(args):
                         # for i in range(3):
                         #     addvalue(writer,f'grad:{i}',gradlist[i],epoch)
                         # print(gradlist)
-                        print(loss.item())
+                        print(f'{epoch} {batchidx}/{len(loaders[phase])} {loss.item():.6f}')
                         if (batchidx+1)%args.subdivisions==0:
                             print('step')
                             optimizer.step()
