@@ -135,7 +135,7 @@ def main(args):
                             optimizer.step()
                             optimizer.zero_grad()
 
-                    miou = miouf(y_pred, y_true, 3).item()
+                    miou = miouf(y_pred, y_true).item()
                     valid_miou += [miou]
                     prmap += prmaper(y_pred, y_true, 3)
                     if batchidx == 0:
@@ -148,7 +148,7 @@ def main(args):
             print(f'test:miou:{np.nanmean(valid_miou):.4f}')
             addvalue(writer, f'mIoU:{phase}', np.nanmean(valid_miou), epoch)
             print((prmap / ((batchidx + 1)*args.batchsize)).int())
-        # save(epoch, unet, args.savefolder, writer, worter)
+        save(epoch, unet, args.savefolder, writer, worter)
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(

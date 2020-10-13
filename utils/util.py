@@ -1,18 +1,14 @@
 import torch
 import torchvision
 import numpy as np
-def miouf(_pred,_t_idx,bce=False):
+def miouf(_pred,_t_idx):
     pred=_pred.clone()
     t_idx=_t_idx.clone().unsqueeze(1)
     B,numcls,H,W=pred.shape
-    if bce:numcls=2
     with torch.no_grad():
-        if not bce:
-            pred=pred.argmax(1)
-        else:
-            pred=(pred>0.5).int()
+        pred=pred.argmax(1)
         miou=[]
-        for clsidx in range(0 if bce else 1,numcls):
+        for clsidx in range(1,numcls):
             if not (t_idx==clsidx).any():
                 continue
             iou=(((pred==clsidx) & (t_idx==clsidx)).sum())/(((pred==clsidx) | (t_idx==clsidx)).sum().float())
