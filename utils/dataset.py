@@ -40,11 +40,14 @@ def loadtxt(path):
         data=[d.strip().split(',') for d in f.readlines()]
     # print(data)
     for d in data:
-        if d[-1]=='0': continue
-        if len(d)==5:
-           cv2.line(mask,(int(d[1]),int(d[2])),getdata(d[-1]),color=int(d[3])+1,thickness=thickness)
-        elif len(d)==2:
-            cv2.line(mask,getdata(d[0]),getdata(d[1]),thickness=thickness,color=getdata(d[0],'cls')+1)
+        try:
+            if d[-1]=='0': continue
+            if len(d)==5:
+               cv2.line(mask,(int(d[1]),int(d[2])),getdata(d[-1]),color=int(d[3])+1,thickness=thickness)
+            elif len(d)==2:
+                cv2.line(mask,getdata(d[0]),getdata(d[1]),thickness=thickness,color=getdata(d[0],'cls')+1)
+        except:
+            print(f'ERROR: {d}')
     return mask
 class CrackDataset(torch.utils.data.Dataset):
     def __init__(self,rawp,maskp,transform=None):
