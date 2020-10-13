@@ -148,7 +148,7 @@ def main(args):
             print(f'test:miou:{np.nanmean(valid_miou):.4f}')
             addvalue(writer, f'mIoU:{phase}', np.nanmean(valid_miou), epoch)
             print((prmap / ((batchidx + 1)*args.batchsize)).int())
-        save(epoch, unet, args.savefolder, writer, worter)
+        save(unet, args.savefolder, writer)
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(

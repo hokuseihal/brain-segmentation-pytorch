@@ -37,11 +37,8 @@ def savedic(dict,fol,save=True):
     with open(f'{fol}/data.pkl','wb') as f:
         pickle.dump(dict,f)
 
-def save(e,model,fol,dic=None):
+def save(model,fol,dic):
     savedmodelpath=f'{fol}/model.pth'
-    if dic:
-        savedic(dic,'/'.join(savedmodelpath.split('/')[:-1]))
-    #torch.save(model.state_dict(), savedmodelpath)
-    with open(f'{fol}/.epoch','w') as f:
-        f.write(f'{e}')
+    savedic(dic,'/'.join(savedmodelpath.split('/')[:-1]))
+    torch.save(model.state_dict(), savedmodelpath)
 
