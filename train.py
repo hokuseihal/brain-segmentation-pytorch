@@ -59,6 +59,7 @@ def main(args):
     #     trainmask, validmask = worter['trainmask'], worter['validmask']
     #     unet.load_state_dict(torch.load(modelpath))
     #     print('load model')
+    # unet.load_state_dict(torch.load('model.pth'))
     unet.to(device)
     # saveworter(worter, 'trainmask', trainmask)
     # saveworter(worter, 'validmask', validmask)
@@ -122,6 +123,7 @@ def main(args):
                         y_pred=unet(x)
                         loss = lossf(y_pred, y_true.long())
                     losslist += [loss.item()]
+                    print(f'{epoch} {batchidx}/{len(loaders[phase])} {loss.item():.6f},{phase}')
                     if phase == "train":
                         # y_pred.retain_grad()
                         (loss/args.subdivisions).backward()
@@ -129,7 +131,6 @@ def main(args):
                         # for i in range(3):
                         #     addvalue(writer,f'grad:{i}',gradlist[i],epoch)
                         # print(gradlist)
-                        print(f'{epoch} {batchidx}/{len(loaders[phase])} {loss.item():.6f}')
                         if (batchidx+1)%args.subdivisions==0:
                             print('step')
                             optimizer.step()
@@ -144,9 +145,8 @@ def main(args):
                              setcolor(y_pred.argmax(1), clscolor)],
                             dim=2), f'{args.savefolder}/{epoch}.jpg')
             addvalue(writer, f'loss:{phase}', np.mean(losslist), epoch)
-            print(f'{epoch=}/{args.epochs}:{phase}:{np.mean(losslist):.4f}')
-            print(f'test:miou:{np.nanmean(valid_miou):.4f}')
             addvalue(writer, f'mIoU:{phase}', np.nanmean(valid_miou), epoch)
+            print(f'{epoch=}/{args.epochs}:{phase}:{np.mean(losslist):.4f},miou:{np.nanmean(valid_miou):.4f}')
             print((prmap / ((batchidx + 1)*args.batchsize)).int())
         save(unet, args.savefolder, writer)
 

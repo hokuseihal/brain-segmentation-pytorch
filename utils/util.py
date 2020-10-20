@@ -3,10 +3,12 @@ import torchvision
 import numpy as np
 def miouf(_pred,_t_idx):
     pred=_pred.clone()
-    t_idx=_t_idx.clone().unsqueeze(1)
+    t_idx=_t_idx.clone()
     B,numcls,H,W=pred.shape
+    pred=pred.argmax(1)
+    assert pred.shape==t_idx.shape
+
     with torch.no_grad():
-        pred=pred.argmax(1)
         miou=[]
         for clsidx in range(1,numcls):
             if not (t_idx==clsidx).any():
