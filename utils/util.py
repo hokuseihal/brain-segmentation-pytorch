@@ -6,7 +6,7 @@ def miouf(_pred,_t_idx):
     t_idx=_t_idx.clone()
     B,numcls,H,W=pred.shape
     pred=pred.argmax(1)
-    assert pred.shape==t_idx.shape
+    assert pred.shape == t_idx.shape
 
     with torch.no_grad():
         miou=[]

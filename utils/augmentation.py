@@ -41,8 +41,8 @@ class PositionJitter(object):
     def __call__(self, samples):
         img=samples['image']
         mask=samples['mask']
-        Cimg,H,W=img.shape
-        Cmask,H,W=mask.shape
+        Cimg,H,W=img.size
+        Cmask,H,W=mask.size
         flag=False
         if random.randint(0,1)==0:
             img=img.permute(0,2,1)
@@ -91,8 +91,8 @@ class Elastic_Distortion(object):
         sample['mask']=sample['mask'].numpy()
         image=sample['image']
         mask=sample['mask']
-        C,H,W=image.shape
-        maskC,H,W=mask.shape
+        C,H,W=image.size
+        maskC,H,W=mask.size
         assert C==maskC
         shape = (H,W)
         dx = gaussian_filter((random_state.rand(*shape) * 2 - 1), self.sigma, mode="constant", cval=0) * alpha
@@ -114,5 +114,5 @@ class Resize(object):
     def __init__(self,dataset):
         self.dataset=dataset
     def __call__(self, img):
-        img=img.resize(self.dataset.shape)
+        img=img.resize(self.dataset.size)
         return img

@@ -63,10 +63,10 @@ def main(args):
     unet.to(device)
     # saveworter(worter, 'trainmask', trainmask)
     # saveworter(worter, 'validmask', validmask)
-    traindataset = Dataset(trainmask, train=True, random=args.random, split=args.split,args=args)
-    validdataset = Dataset(validmask, train=False, random=args.random, split=args.split,args=args)
+    traindataset = Dataset(trainmask, train=True, random=args.random, split=args.split,args=args,size=(args.size,args.size))
+    validdataset = Dataset(validmask, train=False, random=args.random, split=args.split,args=args,size=(args.size,args.size))
     #TODO DEBUG
-    linerdataset=LinerCrackDataset('../data/owncrack/liner',(256,256))
+    linerdataset=LinerCrackDataset('../data/owncrack/liner',(args.size,args.size))
     linertraindataset,linervaldataset=torch.utils.data.random_split(linerdataset,[int(len(linerdataset)*0.8),len(linerdataset)-int(len(linerdataset)*0.8)])
     traindataset=torch.utils.data.ConcatDataset([traindataset,linertraindataset])
     validdataset=torch.utils.data.ConcatDataset([validdataset,validdataset])
@@ -112,7 +112,7 @@ def main(args):
                             lam = np.random.beta(args.alpha, args.alpha)
                         else:
                             lam = 1
-                        rndidx=np.random.permutation(range(x.shape[0]))
+                        rndidx=np.random.permutation(range(x.size[0]))
                         x=lam*x+(1-lam)*x[rndidx]
                         from torchvision.transforms import ToPILImage
                         # ToPILImage()(x[0].detach().cpu()).show()
@@ -272,6 +272,10 @@ if __name__ == "__main__":
         '--dropout',
         default=0,
         type=float
+    )
+    parser.add_argument(
+        '--size',
+        default=256
     )
     parser.add_argument('--mixup',default=False,action='store_true')
     parser.add_argument('--alpha',default=1,type=float)
