@@ -34,7 +34,7 @@ def loadtxt(path):
             if len(d)==5 and d[0]==ind:
                 if sec=='point':return int(d[1]),int(d[2])
                 elif sec=='cls':return int(d[3])
-        assert False,f"{path},{ind} is not found."
+        print(f"{path},{ind} is not found.")
     mask=np.zeros((800,800))
     with open(path) as f:
         data=[d.strip().split(',') for d in f.readlines()]
