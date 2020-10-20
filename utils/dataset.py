@@ -35,7 +35,6 @@ def loadtxt(path):
                 if sec=='point':return int(d[1]),int(d[2])
                 elif sec=='cls':return int(d[3])
         print(f"{path},{ind} is not found.")
-        assert ValueError
     mask=np.zeros((800,800))
     with open(path) as f:
         data=[d.strip().split(',') for d in f.readlines()]
@@ -47,7 +46,7 @@ def loadtxt(path):
                 cv2.line(mask,(int(d[1]),int(d[2])),getdata(d[-1]),color=int(d[3])+1,thickness=thickness)
             elif len(d)==2:
                 cv2.line(mask,getdata(d[0]),getdata(d[1]),thickness=thickness,color=getdata(d[0],'cls')+1)
-        except ValueError:
+        except:
             print(f'ERROR on {path},{d}')
     return mask
 class CrackDataset(torch.utils.data.Dataset):

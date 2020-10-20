@@ -275,7 +275,8 @@ if __name__ == "__main__":
     )
     parser.add_argument(
         '--size',
-        default=256
+        default=256,
+        type=int,
     )
     parser.add_argument('--mixup',default=False,action='store_true')
     parser.add_argument('--alpha',default=1,type=float)
