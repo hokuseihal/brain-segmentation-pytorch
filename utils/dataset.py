@@ -9,6 +9,7 @@ import random
 from PIL import Image
 import os
 import cv2
+from utils.util import setcolor
 def binary(x,a=.5):
     assert x.shape[0] == 3
     x[x>a]=1
@@ -25,6 +26,9 @@ class LinerCrackDataset(torch.utils.data.Dataset):
         im=Image.open(self.txt[idx].replace('txt','jpg'))
         mask=loadtxt(self.txt[idx])
         mask=np.floor(cv2.resize(mask,self.size)).astype(np.int64)
+        #save mask
+        maskimg=setcolor(torch.from_numpy(np.expand_dims(mask,axis=0)),torch.tensor([[0, 0, 0], [255, 255, 255], [0, 255, 0]]))[0]//255
+        ToPILImage()(maskimg).save(self.txt[idx].replace('.txt','.jpg').replace('liner','liner/mask'))
         return self.transform(im),torch.from_numpy(mask)
 def loadtxt(path):
     thickness=21
@@ -151,8 +155,7 @@ class MulticlassCrackDataset(torch.utils.data.Dataset):
         return img,clsmask
 import pickle
 if __name__=='__main__':
-    dataset=MulticlassCrackDataset(glob.glob('../data/owncrack/scene/mask/*'),random=False,train=True)
-    _=dataset[0]
-    with open('../tmpcrack/preout.pkl','rb') as f:
-        preout=pickle.load(f)
-    print((preout[1]!=_[1]).sum())
+    linerdataset = LinerCrackDataset('../data/owncrack/liner', (4032,3024))
+    for i in range(len(linerdataset)):
+        print(i)
+        linerdataset[i]

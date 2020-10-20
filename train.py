@@ -66,10 +66,10 @@ def main(args):
     traindataset = Dataset(trainmask, train=True, random=args.random, split=args.split,args=args,size=(args.size,args.size))
     validdataset = Dataset(validmask, train=False, random=args.random, split=args.split,args=args,size=(args.size,args.size))
     #TODO DEBUG
-    linerdataset=LinerCrackDataset('../data/owncrack/liner',(args.size,args.size))
-    linertraindataset,linervaldataset=torch.utils.data.random_split(linerdataset,[int(len(linerdataset)*0.8),len(linerdataset)-int(len(linerdataset)*0.8)])
-    traindataset=torch.utils.data.ConcatDataset([traindataset,linertraindataset])
-    validdataset=torch.utils.data.ConcatDataset([validdataset,validdataset])
+    # linerdataset=LinerCrackDataset('../data/owncrack/liner',(args.size,args.size))
+    # linertraindataset,linervaldataset=torch.utils.data.random_split(linerdataset,[int(len(linerdataset)*0.8),len(linerdataset)-int(len(linerdataset)*0.8)])
+    # traindataset=torch.utils.data.ConcatDataset([traindataset,linertraindataset])
+    # validdataset=torch.utils.data.ConcatDataset([validdataset,validdataset])
     trainloader = torch.utils.data.DataLoader(traindataset, batch_size=args.batchsize//args.subdivisions, shuffle=True,
                                               num_workers=args.workers)
     validloader = torch.utils.data.DataLoader(validdataset, batch_size=args.batchsize//args.subdivisions, shuffle=True,

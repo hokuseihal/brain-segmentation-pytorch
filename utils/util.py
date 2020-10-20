@@ -36,3 +36,13 @@ def cal_grad_ratio(pred,y_true,num_cls=3):
             for i in range(3):
                 loss[cls]+=(grad[:,i][(y_true==cls)]**2).sum()
         return loss
+
+def setcolor(idxtendor, colors):
+    assert idxtendor.max() + 1 <= len(colors)
+    B, H, W = idxtendor.shape
+    colimg = torch.zeros(B, 3, H, W).to(idxtendor.device).to(idxtendor.device)
+    colors = colors[1:]
+    for b in range(B):
+        for idx, color in enumerate(colors, 1):
+            colimg[b, :, idxtendor[b] == idx] = (color.reshape(3, 1)).to(idxtendor.device).float()
+    return colimg
