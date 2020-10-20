@@ -280,3 +280,4 @@ data
 weights
 venv
 .python-version
+*.pth
