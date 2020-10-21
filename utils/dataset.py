@@ -86,12 +86,6 @@ class MulticlassCrackDataset(torch.utils.data.Dataset):
         _posttransforms=[]
         _pretransforms=[]
         _pretransforms+=[Crops(self)]
-        if train :
-            _transform+=[ColorJitter()]
-            if args.jitter >0:
-                _posttransforms+=[PositionJitter(args.jitter,args.jitter_block)]
-            if args.elastic:
-                _posttransforms+=[Elastic_Distortion()]
         _transform+=[Resize(self),ToTensor()]
         self.pretransforms=Compose(_pretransforms)
         self.transform=Compose(_transform)
