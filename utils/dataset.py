@@ -120,8 +120,6 @@ class MulticlassCrackDataset(torch.utils.data.Dataset):
         item,posidx=self.getposition(item)
         img=Image.open(self.raw[item])
         mask=Image.open(self.mask[item]).convert('RGB')
-        img.save('pre.png')
-        mask.save('mpre.png')
         if self.half:
             if random.randint(0,1):
                 region=(0,0,img.size[0]//2,img.size[1])
@@ -129,8 +127,6 @@ class MulticlassCrackDataset(torch.utils.data.Dataset):
                 region=(img.size[0] // 2,0, img.size[0],img.size[1])
             img=img.crop(region)
             mask=mask.crop(region)
-        img.save('post.png')
-        mask.save('mpost.png')
         W,H=img.size
         if self.train:
             if self.random:

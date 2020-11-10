@@ -279,7 +279,7 @@ if __name__ == "__main__":
     )
     parser.add_argument('--mixup',default=False,action='store_true')
     parser.add_argument('--alpha',default=1,type=float)
-    parser.add_argument('--half',default=False,action='insert_true')
+    parser.add_argument('--half',default=False,action='store_true')
     args = parser.parse_args()
     args.num_train = args.split
     args.epochs *= args.split
