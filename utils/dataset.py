@@ -71,7 +71,7 @@ class CrackDataset(torch.utils.data.Dataset):
         return self.transform(imraw),self.transform(immask)
 
 class MulticlassCrackDataset(torch.utils.data.Dataset):
-    def __init__(self,masks,transform=None,clscolor=[[0,0,0],[255,255,255],[0,255,0]],random=False,split=1,train=True,args=None,size=(256,256)):
+    def __init__(self,masks,transform=None,clscolor=[[0,0,0],[255,255,255],[0,255,0]],random=False,split=1,train=True,args=None,size=(256,256),half=False):
         assert split in {1,2,4,8,16}
         self.train=train
         self.mask=masks
@@ -96,6 +96,7 @@ class MulticlassCrackDataset(torch.utils.data.Dataset):
         print(f'{self.pretransforms=}')
         print(f'{self.transform=}')
         print(f'{self.posttransforms=}')
+        self.half=half
     def resize(self):
         print(self.size, '->', end='')
         # sz=64*random.randint(128//64,512//64)
@@ -119,6 +120,17 @@ class MulticlassCrackDataset(torch.utils.data.Dataset):
         item,posidx=self.getposition(item)
         img=Image.open(self.raw[item])
         mask=Image.open(self.mask[item]).convert('RGB')
+        img.save('pre.png')
+        mask.save('mpre.png')
+        if self.half:
+            if random.randint(0,1):
+                region=(0,0,img.size[0]//2,img.size[1])
+            else:
+                region=(img.size[0] // 2,0, img.size[0],img.size[1])
+            img=img.crop(region)
+            mask=mask.crop(region)
+        img.save('post.png')
+        mask.save('mpost.png')
         W,H=img.size
         if self.train:
             if self.random:
