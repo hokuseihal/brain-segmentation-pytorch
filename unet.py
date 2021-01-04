@@ -50,6 +50,7 @@ class UNet(nn.Module):
         self.dropout4=nn.Dropout(dropout)
 
     def forward(self, x):
+        # x=x.permute(0,3,1,2)
         enc1 = self.dropout1(self.encoder1(x))
         enc2 = self.dropout2(self.encoder2(self.pool1(enc1)))
         enc3 = self.dropout3(self.encoder3(self.pool2(enc2)))
@@ -92,7 +93,9 @@ class UNet(nn.Module):
             save_image(self.decoder2.dec2conv1.weight[:,0].unsqueeze(1),f'{self.savefolder}/decoder2.jpg')
             save_image(self.decoder3.dec3conv1.weight[:,0].unsqueeze(1),f'{self.savefolder}/decoder3.jpg')
             save_image(self.decoder4.dec4conv1.weight[:,0].unsqueeze(1),f'{self.savefolder}/decoder4.jpg')
-        return torch.sigmoid(self.conv(dec1))
+        x=torch.sigmoid(self.conv(dec1))
+        # return x.permute(0,2,3,1)
+        return x
 
     @staticmethod
     def _block(in_channels, features, name):

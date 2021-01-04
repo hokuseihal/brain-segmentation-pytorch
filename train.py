@@ -13,7 +13,7 @@ from torchvision.utils import save_image
 from core import save, addvalue
 from loss import DiceLoss, FocalLoss
 from unet import UNet, wrapped_UNet
-from utils.dataset import MulticlassCrackDataset as Dataset
+# from utils.dataset import MulticlassCrackDataset as Dataset
 from utils.dataset import LinerCrackDataset
 from utils.util import miouf, prmaper,cal_grad_ratio
 
@@ -63,10 +63,10 @@ def main(args):
     unet.to(device)
     # saveworter(worter, 'trainmask', trainmask)
     # saveworter(worter, 'validmask', validmask)
-    traindataset = Dataset(trainmask, train=True, random=args.random, split=args.split,args=args,size=(args.size,args.size))
-    validdataset = Dataset(validmask, train=False, random=args.random, split=args.split,args=args,size=(args.size,args.size))
-    # linerdataset=LinerCrackDataset('../data/owncrack/liner',(args.size,args.size))
-    # linertraindataset,linervaldataset=torch.utils.data.random_split(linerdataset,[int(len(linerdataset)*0.8),len(linerdataset)-int(len(linerdataset)*0.8)])
+    # traindataset = Dataset(trainmask, train=True, random=args.random, split=args.split,args=args,size=(args.size,args.size))
+    # validdataset = Dataset(validmask, train=False, random=args.random, split=args.split,args=args,size=(args.size,args.size))
+    linerdataset=LinerCrackDataset(args.linerimgfolder,(args.size,args.size))
+    traindataset,validdataset=torch.utils.data.random_split(linerdataset,[int(len(linerdataset)*0.8),len(linerdataset)-int(len(linerdataset)*0.8)])
     # traindataset=torch.utils.data.ConcatDataset([traindataset,linertraindataset])
     # validdataset=torch.utils.data.ConcatDataset([validdataset,validdataset])
     trainloader = torch.utils.data.DataLoader(traindataset, batch_size=args.batchsize//args.subdivisions, shuffle=True,
@@ -276,6 +276,10 @@ if __name__ == "__main__":
         '--size',
         default=256,
         type=int,
+    )
+    parser.add_argument(
+        '--linerimgfolder',
+        default='../data/owncrack/liner'
     )
     parser.add_argument('--mixup',default=False,action='store_true')
     parser.add_argument('--alpha',default=1,type=float)
