@@ -65,8 +65,8 @@ def main(args):
     # saveworter(worter, 'validmask', validmask)
     # traindataset = Dataset(trainmask, train=True, random=args.random, split=args.split,args=args,size=(args.size,args.size))
     # validdataset = Dataset(validmask, train=False, random=args.random, split=args.split,args=args,size=(args.size,args.size))
-    linerdataset=LinerCrackDataset(args.linerimgfolder,(args.size,args.size))
-    traindataset,validdataset=torch.utils.data.random_split(linerdataset,[int(len(linerdataset)*0.8),len(linerdataset)-int(len(linerdataset)*0.8)])
+    traindataset=LinerCrackDataset(f'{args.linerimgfolder}/train.txt',(args.size,args.size))
+    validdataset=LinerCrackDataset(f'{args.linerimgfolder}/val.txt',(args.size,args.size))
     # traindataset=torch.utils.data.ConcatDataset([traindataset,linertraindataset])
     # validdataset=torch.utils.data.ConcatDataset([validdataset,validdataset])
     trainloader = torch.utils.data.DataLoader(traindataset, batch_size=args.batchsize//args.subdivisions, shuffle=True,

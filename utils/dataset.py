@@ -16,9 +16,10 @@ def binary(x,a=.5):
     x[x<a]=0
     return x
 class LinerCrackDataset(torch.utils.data.Dataset):
-    def __init__(self,root,size,**kwargs):
+    def __init__(self,txt,size,**kwargs):
         self.size=size
-        self.txt=glob.glob(f'{root}/*.txt')
+        with open(txt) as f:
+            self.txt=[l.strip() for l in f.readlines()]
         self.transform=T.Compose([T.Resize(size),T.ToTensor()])
     def __len__(self):
         return len(self.txt)
