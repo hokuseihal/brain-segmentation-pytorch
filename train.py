@@ -66,6 +66,7 @@ def main(args):
     validdataset = LinerCrackDataset(f'{args.linerimgfolder}/val.txt', (args.size, args.size))
     # traindataset=torch.utils.data.ConcatDataset([traindataset,linertraindataset])
     # validdataset=torch.utils.data.ConcatDataset([validdataset,validdataset])
+    print(f'train"{len(traindataset)},val:{len(validdataset)}')
     trainloader = torch.utils.data.DataLoader(traindataset, batch_size=args.batchsize // args.subdivisions,
                                               shuffle=True,
                                               num_workers=args.workers)
