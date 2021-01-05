@@ -1,7 +1,7 @@
 import argparse
+import glob
 import os
 import random
-import glob
 import time
 from multiprocessing import cpu_count
 
@@ -16,9 +16,7 @@ from loss import DiceLoss, FocalLoss
 from unet import UNet, wrapped_UNet
 # from utils.dataset import MulticlassCrackDataset as Dataset
 from utils.dataset import LinerCrackDataset
-from utils.util import miouf, prmaper,cal_grad_ratio
-
-from NL_unet import NonLocalUNet
+from utils.util import miouf, prmaper
 
 
 def setcolor(idxtendor, colors):
@@ -30,8 +28,6 @@ def setcolor(idxtendor, colors):
         for idx, color in enumerate(colors, 1):
             colimg[b, :, idxtendor[b] == idx] = (color.reshape(3, 1)).to(idxtendor.device).float()
     return colimg
-
-
 
 
 def main(args):
@@ -46,7 +42,7 @@ def main(args):
     import hashlib
     print(hashlib.md5("".join(validmask).encode()).hexdigest())
     # unet=NonLocalUNet(3,3,128)
-    unet = UNet(in_channels=3, out_channels=3, cutpath=args.cutpath,dropout=args.dropout)
+    unet = UNet(in_channels=3, out_channels=3, cutpath=args.cutpath, dropout=args.dropout)
     if args.pretrained:
         unet = torch.hub.load('mateuszbuda/brain-segmentation-pytorch', 'unet',
                               in_channels=3, out_channels=1, init_features=32, pretrained=True)
@@ -66,13 +62,15 @@ def main(args):
     # saveworter(worter, 'validmask', validmask)
     # traindataset = Dataset(trainmask, train=True, random=args.random, split=args.split,args=args,size=(args.size,args.size))
     # validdataset = Dataset(validmask, train=False, random=args.random, split=args.split,args=args,size=(args.size,args.size))
-    traindataset=LinerCrackDataset(f'{args.linerimgfolder}/train.txt',(args.size,args.size))
-    validdataset=LinerCrackDataset(f'{args.linerimgfolder}/val.txt',(args.size,args.size))
+    traindataset = LinerCrackDataset(f'{args.linerimgfolder}/train.txt', (args.size, args.size))
+    validdataset = LinerCrackDataset(f'{args.linerimgfolder}/val.txt', (args.size, args.size))
     # traindataset=torch.utils.data.ConcatDataset([traindataset,linertraindataset])
     # validdataset=torch.utils.data.ConcatDataset([validdataset,validdataset])
-    trainloader = torch.utils.data.DataLoader(traindataset, batch_size=args.batchsize//args.subdivisions, shuffle=True,
+    trainloader = torch.utils.data.DataLoader(traindataset, batch_size=args.batchsize // args.subdivisions,
+                                              shuffle=True,
                                               num_workers=args.workers)
-    validloader = torch.utils.data.DataLoader(validdataset, batch_size=args.batchsize//args.subdivisions, shuffle=True,
+    validloader = torch.utils.data.DataLoader(validdataset, batch_size=args.batchsize // args.subdivisions,
+                                              shuffle=True,
                                               num_workers=args.workers)
     loaders = {'train': trainloader, 'valid': validloader}
     if args.saveimg: unet.savefolder = args.savefolder
@@ -91,7 +89,7 @@ def main(args):
     os.makedirs(args.savefolder, exist_ok=True)
     for epoch in range(preepoch, args.epochs):
         for phase in ["train"] * args.num_train + ["valid"]:
-        # for phase in ['valid']:
+            # for phase in ['valid']:
             valid_miou = []
             losslist = []
             prmap = torch.zeros(3, 3)
@@ -103,56 +101,54 @@ def main(args):
                     traindataset.resize()
             else:
                 unet.eval()
-        batchstarttime=0
+        batchstarttime = 0
         for batchidx, data in enumerate(loaders[phase]):
-                print(f'batchtime:{time.time()-batchstarttime}')
-                batchstarttime=time.time()
-                x, y_true = data
-                x, y_true = x.to(device), y_true.to(device).float()
-                with torch.set_grad_enabled(phase == "train"):
-                    if args.mixup and phase=='train':
-                        if args.alpha > 0:
-                            lam = np.random.beta(args.alpha, args.alpha)
-                        else:
-                            lam = 1
-                        rndidx=np.random.permutation(range(x.size[0]))
-                        x=lam*x+(1-lam)*x[rndidx]
-                        from torchvision.transforms import ToPILImage
-                        # ToPILImage()(x[0].detach().cpu()).show()
-                        # exit()
-                        y_pred = unet(x)
-                        loss=lam*lossf(y_pred,y_true)+(1-lam)*lossf(y_pred,y_true[rndidx])
+            print(f'batchtime:{time.time() - batchstarttime}')
+            batchstarttime = time.time()
+            x, y_true = data
+            x, y_true = x.to(device), y_true.to(device).float()
+            with torch.set_grad_enabled(phase == "train"):
+                if args.mixup and phase == 'train':
+                    if args.alpha > 0:
+                        lam = np.random.beta(args.alpha, args.alpha)
                     else:
-                        y_pred=unet(x)
-                        loss = lossf(y_pred, y_true.long())
-                    losslist += [loss.item()]
-                    print(f'{epoch} {batchidx}/{len(loaders[phase])} {loss.item():.6f},{phase}')
-                    print(f'time:{time.time()-batchstarttime}')
-                    if phase == "train":
-                        # y_pred.retain_grad()
-                        (loss/args.subdivisions).backward()
-                        # gradlist=cal_grad_ratio(y_pred,y_true).numpy()
-                        # for i in range(3):
-                        #     addvalue(writer,f'grad:{i}',gradlist[i],epoch)
-                        # print(gradlist)
-                        if (batchidx+1)%args.subdivisions==0:
-                            print('step')
-                            optimizer.step()
-                            optimizer.zero_grad()
+                        lam = 1
+                    rndidx = np.random.permutation(range(x.size[0]))
+                    x = lam * x + (1 - lam) * x[rndidx]
+                    # ToPILImage()(x[0].detach().cpu()).show()
+                    # exit()
+                    y_pred = unet(x)
+                    loss = lam * lossf(y_pred, y_true) + (1 - lam) * lossf(y_pred, y_true[rndidx])
+                else:
+                    y_pred = unet(x)
+                    loss = lossf(y_pred, y_true.long())
+                losslist += [loss.item()]
+                print(f'{epoch} {batchidx}/{len(loaders[phase])} {loss.item():.6f},{phase}')
+                print(f'time:{time.time() - batchstarttime}')
+                if phase == "train":
+                    # y_pred.retain_grad()
+                    (loss / args.subdivisions).backward()
+                    # gradlist=cal_grad_ratio(y_pred,y_true).numpy()
+                    # for i in range(3):
+                    #     addvalue(writer,f'grad:{i}',gradlist[i],epoch)
+                    # print(gradlist)
+                    if (batchidx + 1) % args.subdivisions == 0:
+                        print('step')
+                        optimizer.step()
+                        optimizer.zero_grad()
 
-                    miou = miouf(y_pred, y_true).item()
-                    valid_miou += [miou]
-                    prmap += prmaper(y_pred, y_true, 3)
-                    if batchidx == 0:
-                        save_image(torch.cat(
-                            [x, setcolor(y_true, clscolor),
-                             setcolor(y_pred.argmax(1), clscolor)],
-                            dim=2), f'{args.savefolder}/{epoch}.jpg')
-            addvalue(writer, f'loss:{phase}', np.mean(losslist), epoch)
-            addvalue(writer, f'mIoU:{phase}', np.nanmean(valid_miou), epoch)
-            print(f'{epoch=}/{args.epochs}:{phase}:{np.mean(losslist):.4f},miou:{np.nanmean(valid_miou):.4f}')
-            print((prmap / ((batchidx + 1)*args.batchsize)).int())
-        save(unet, args.savefolder, writer)
+                miou = miouf(y_pred, y_true).item()
+                valid_miou += [miou]
+                prmap += prmaper(y_pred, y_true, 3)
+                if batchidx == 0: save_image(
+                    torch.cat([x, setcolor(y_true, clscolor), setcolor(y_pred.argmax(1), clscolor)], dim=2),
+                    f'{args.savefolder}/{epoch}.jpg')
+        addvalue(writer, f'loss:{phase}', np.mean(losslist), epoch)
+        addvalue(writer, f'mIoU:{phase}', np.nanmean(valid_miou), epoch)
+        print(f'{epoch=}/{args.epochs}:{phase}:{np.mean(losslist):.4f},miou:{np.nanmean(valid_miou):.4f}')
+        print((prmap / ((batchidx + 1) * args.batchsize)).int())
+    save(unet, args.savefolder, writer)
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
@@ -286,9 +282,9 @@ if __name__ == "__main__":
         '--linerimgfolder',
         default='../data/owncrack/liner'
     )
-    parser.add_argument('--mixup',default=False,action='store_true')
-    parser.add_argument('--alpha',default=1,type=float)
-    parser.add_argument('--half',default=False,action='store_true')
+    parser.add_argument('--mixup', default=False, action='store_true')
+    parser.add_argument('--alpha', default=1, type=float)
+    parser.add_argument('--half', default=False, action='store_true')
     args = parser.parse_args()
     args.num_train = args.split
     args.epochs *= args.split
