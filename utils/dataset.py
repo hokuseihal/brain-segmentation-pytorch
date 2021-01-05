@@ -19,7 +19,7 @@ class LinerCrackDataset(torch.utils.data.Dataset):
     def __init__(self,txt,size,**kwargs):
         self.size=size
         with open(txt) as f:
-            self.txt=[l.strip() for l in f.readlines()]
+            self.txt=[l.strip().replace('jpg','txt') for l in f.readlines()]
         self.transform=T.Compose([T.Resize(size),T.ToTensor()])
     def __len__(self):
         return len(self.txt)
@@ -32,7 +32,7 @@ class LinerCrackDataset(torch.utils.data.Dataset):
         ToPILImage()(maskimg).save(self.txt[idx].replace('.txt','.jpg').replace('liner','liner/mask'))
         return self.transform(im),torch.from_numpy(mask)
 def loadtxt(path):
-    thickness=21
+    thickness=7
     def getdata(ind,sec='point'):
         for d in data:
             # print(d[0],ind)

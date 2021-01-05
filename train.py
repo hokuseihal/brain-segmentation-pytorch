@@ -2,6 +2,7 @@ import argparse
 import os
 import random
 import glob
+import time
 from multiprocessing import cpu_count
 
 import numpy as np
@@ -102,7 +103,10 @@ def main(args):
                     traindataset.resize()
             else:
                 unet.eval()
-            for batchidx, data in enumerate(loaders[phase]):
+        batchstarttime=0
+        for batchidx, data in enumerate(loaders[phase]):
+                print(f'batchtime:{time.time()-batchstarttime}')
+                batchstarttime=time.time()
                 x, y_true = data
                 x, y_true = x.to(device), y_true.to(device).float()
                 with torch.set_grad_enabled(phase == "train"):
@@ -123,6 +127,7 @@ def main(args):
                         loss = lossf(y_pred, y_true.long())
                     losslist += [loss.item()]
                     print(f'{epoch} {batchidx}/{len(loaders[phase])} {loss.item():.6f},{phase}')
+                    print(f'time:{time.time()-batchstarttime}')
                     if phase == "train":
                         # y_pred.retain_grad()
                         (loss/args.subdivisions).backward()
