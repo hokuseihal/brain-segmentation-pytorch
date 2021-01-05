@@ -19,7 +19,7 @@ class LinerCrackDataset(torch.utils.data.Dataset):
     def __init__(self,txt,size,**kwargs):
         self.size=size
         with open(txt) as f:
-            self.txt=[l.strip().replace('jpg','txt') for l in f.readlines()]
+            self.txt=[l.strip().replace('jpg','txt') for l in f.readlines() if os.path.exists(l.strip().replace('jpg','txt')) and os.path.exists(l.strip())]
         self.transform=T.Compose([T.Resize(size),T.ToTensor()])
     def __len__(self):
         return len(self.txt)
@@ -28,8 +28,8 @@ class LinerCrackDataset(torch.utils.data.Dataset):
         mask=loadtxt(self.txt[idx])
         mask=np.floor(cv2.resize(mask,self.size)).astype(np.int64)
         #save mask
-        # maskimg=setcolor(torch.from_numpy(np.expand_dims(mask,axis=0)),torch.tensor([[0, 0, 0], [255, 255, 255], [0, 255, 0]]))[0]//255
-        # ToPILImage()(maskimg).save(self.txt[idx].replace('.txt','.jpg'))
+        maskimg=setcolor(torch.from_numpy(np.expand_dims(mask,axis=0)),torch.tensor([[0, 0, 0], [255, 255, 255], [0, 255, 0]]))[0]//255
+        ToPILImage()(maskimg).save(self.txt[idx].replace('.txt','.jpg'))
         return self.transform(im),torch.from_numpy(mask)
 def loadtxt(path):
     thickness=7
