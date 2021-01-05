@@ -46,3 +46,16 @@ def setcolor(idxtendor, colors):
         for idx, color in enumerate(colors, 1):
             colimg[b, :, idxtendor[b] == idx] = (color.reshape(3, 1)).to(idxtendor.device).float()
     return colimg
+
+def mAP(_pred,_t_idx):
+    import numpy as np
+    from sklearn.metrics import average_precision_score
+    pred=_pred.clone()
+    t_idx=_t_idx.clone()
+    B,C,H,W=pred.shape
+    with torch.no_grad():
+        map=[]
+        for clsidx in range(1,C):
+            map.append(average_precision_score((t_idx==clsidx).cpu().numpy().reshape(-1),pred[:,clsidx].cpu().numpy().reshape(-1)))
+
+    return np.mean(map)

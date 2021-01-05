@@ -16,7 +16,7 @@ from loss import DiceLoss, FocalLoss
 from unet import UNet, wrapped_UNet
 # from utils.dataset import MulticlassCrackDataset as Dataset
 from utils.dataset import LinerCrackDataset
-from utils.util import miouf, prmaper
+from utils.util import miouf, prmaper,mAP
 
 
 def setcolor(idxtendor, colors):
@@ -93,6 +93,7 @@ def main(args):
             # for phase in ['valid']:
             valid_miou = []
             losslist = []
+            map=[]
             prmap = torch.zeros(3, 3)
 
             if phase == "train":
@@ -141,12 +142,14 @@ def main(args):
                     miou = miouf(y_pred, y_true).item()
                     valid_miou += [miou]
                     prmap += prmaper(y_pred, y_true, 3)
+                    map+=[mAP(y_pred,y_true)]
                     if batchidx == 0: save_image(
                         torch.cat([x, setcolor(y_true, clscolor), setcolor(y_pred.argmax(1), clscolor)], dim=2),
                         f'{args.savefolder}/{epoch}.jpg')
             addvalue(writer, f'loss:{phase}', np.mean(losslist), epoch)
             addvalue(writer, f'mIoU:{phase}', np.nanmean(valid_miou), epoch)
-            print(f'{epoch=}/{args.epochs}:{phase}:{np.mean(losslist):.4f},miou:{np.nanmean(valid_miou):.4f}')
+            addvalue(writer, f'mAP:{phase}', np.nanmean(map), epoch)
+            print(f'{epoch=}/{args.epochs}:{phase}:{np.mean(losslist):.4f},miou:{np.nanmean(valid_miou):.4f},mAP"{np.nanmean(map):.4f}')
             print((prmap / ((batchidx + 1) * args.batchsize)).int())
     save(unet, args.savefolder, writer)
 
