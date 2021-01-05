@@ -102,52 +102,52 @@ def main(args):
                     traindataset.resize()
             else:
                 unet.eval()
-        batchstarttime = 0
-        for batchidx, data in enumerate(loaders[phase]):
-            print(f'batchtime:{time.time() - batchstarttime}')
-            batchstarttime = time.time()
-            x, y_true = data
-            x, y_true = x.to(device), y_true.to(device).float()
-            with torch.set_grad_enabled(phase == "train"):
-                if args.mixup and phase == 'train':
-                    if args.alpha > 0:
-                        lam = np.random.beta(args.alpha, args.alpha)
+            batchstarttime = 0
+            for batchidx, data in enumerate(loaders[phase]):
+                print(f'batchtime:{time.time() - batchstarttime}')
+                batchstarttime = time.time()
+                x, y_true = data
+                x, y_true = x.to(device), y_true.to(device).float()
+                with torch.set_grad_enabled(phase == "train"):
+                    if args.mixup and phase == 'train':
+                        if args.alpha > 0:
+                            lam = np.random.beta(args.alpha, args.alpha)
+                        else:
+                            lam = 1
+                        rndidx = np.random.permutation(range(x.size[0]))
+                        x = lam * x + (1 - lam) * x[rndidx]
+                        # ToPILImage()(x[0].detach().cpu()).show()
+                        # exit()
+                        y_pred = unet(x)
+                        loss = lam * lossf(y_pred, y_true) + (1 - lam) * lossf(y_pred, y_true[rndidx])
                     else:
-                        lam = 1
-                    rndidx = np.random.permutation(range(x.size[0]))
-                    x = lam * x + (1 - lam) * x[rndidx]
-                    # ToPILImage()(x[0].detach().cpu()).show()
-                    # exit()
-                    y_pred = unet(x)
-                    loss = lam * lossf(y_pred, y_true) + (1 - lam) * lossf(y_pred, y_true[rndidx])
-                else:
-                    y_pred = unet(x)
-                    loss = lossf(y_pred, y_true.long())
-                losslist += [loss.item()]
-                print(f'{epoch} {batchidx}/{len(loaders[phase])} {loss.item():.6f},{phase}')
-                print(f'time:{time.time() - batchstarttime}')
-                if phase == "train":
-                    # y_pred.retain_grad()
-                    (loss / args.subdivisions).backward()
-                    # gradlist=cal_grad_ratio(y_pred,y_true).numpy()
-                    # for i in range(3):
-                    #     addvalue(writer,f'grad:{i}',gradlist[i],epoch)
-                    # print(gradlist)
-                    if (batchidx + 1) % args.subdivisions == 0:
-                        print('step')
-                        optimizer.step()
-                        optimizer.zero_grad()
+                        y_pred = unet(x)
+                        loss = lossf(y_pred, y_true.long())
+                    losslist += [loss.item()]
+                    print(f'{epoch} {batchidx}/{len(loaders[phase])} {loss.item():.6f},{phase}')
+                    print(f'time:{time.time() - batchstarttime}')
+                    if phase == "train":
+                        # y_pred.retain_grad()
+                        (loss / args.subdivisions).backward()
+                        # gradlist=cal_grad_ratio(y_pred,y_true).numpy()
+                        # for i in range(3):
+                        #     addvalue(writer,f'grad:{i}',gradlist[i],epoch)
+                        # print(gradlist)
+                        if (batchidx + 1) % args.subdivisions == 0:
+                            print('step')
+                            optimizer.step()
+                            optimizer.zero_grad()
 
-                miou = miouf(y_pred, y_true).item()
-                valid_miou += [miou]
-                prmap += prmaper(y_pred, y_true, 3)
-                if batchidx == 0: save_image(
-                    torch.cat([x, setcolor(y_true, clscolor), setcolor(y_pred.argmax(1), clscolor)], dim=2),
-                    f'{args.savefolder}/{epoch}.jpg')
-        addvalue(writer, f'loss:{phase}', np.mean(losslist), epoch)
-        addvalue(writer, f'mIoU:{phase}', np.nanmean(valid_miou), epoch)
-        print(f'{epoch=}/{args.epochs}:{phase}:{np.mean(losslist):.4f},miou:{np.nanmean(valid_miou):.4f}')
-        print((prmap / ((batchidx + 1) * args.batchsize)).int())
+                    miou = miouf(y_pred, y_true).item()
+                    valid_miou += [miou]
+                    prmap += prmaper(y_pred, y_true, 3)
+                    if batchidx == 0: save_image(
+                        torch.cat([x, setcolor(y_true, clscolor), setcolor(y_pred.argmax(1), clscolor)], dim=2),
+                        f'{args.savefolder}/{epoch}.jpg')
+            addvalue(writer, f'loss:{phase}', np.mean(losslist), epoch)
+            addvalue(writer, f'mIoU:{phase}', np.nanmean(valid_miou), epoch)
+            print(f'{epoch=}/{args.epochs}:{phase}:{np.mean(losslist):.4f},miou:{np.nanmean(valid_miou):.4f}')
+            print((prmap / ((batchidx + 1) * args.batchsize)).int())
     save(unet, args.savefolder, writer)
 
 
