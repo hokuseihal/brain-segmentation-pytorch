@@ -3,10 +3,13 @@ from unet import UNet
 from PIL import Image
 import torchvision.transforms as T
 from torchvision.utils import save_image
-def setcolor(idxtendor, colors=torch.tensor([[0, 0, 0], [255, 255, 255], [0, 255, 0]])):
+def setcolor(idxtendor, colors=torch.tensor([[0, 0, 0], [255, 255, 255], [0, 255, 0]]),imgpath=None):
     assert idxtendor.max() + 1 <= len(colors)
     B, H, W = idxtendor.shape
-    colimg = torch.zeros(B, 3, H, W).to(idxtendor.device).to(idxtendor.device)
+    if imgpath is not None:
+        colimg=T.ToTensor()(imgpath).reshape(1,3,H,W).to(idxtendor)
+    else:
+        colimg = torch.zeros(B, 3, H, W).to(idxtendor.device).to(idxtendor.device)
     colors = colors[1:]
     for b in range(B):
         for idx, color in enumerate(colors, 1):
@@ -21,7 +24,7 @@ def demo(imgpath='/home/hokusei/src/data/owncrack/img.jpg',modelpath='data/norma
     for p in model.parameters():
         p.requires_grad=False
     out=model(img)
-    save_image(setcolor(out.argmax(1)),outpath)
+    save_image(setcolor(out.argmax(1)),outpath,imgpath)
 
 if __name__=='__main__':
     demo()
