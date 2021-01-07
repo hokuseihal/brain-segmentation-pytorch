@@ -43,6 +43,8 @@ def main(args):
     print(hashlib.md5("".join(validmask).encode()).hexdigest())
     # unet=NonLocalUNet(3,3,128)
     unet = UNet(in_channels=3, out_channels=3, cutpath=args.cutpath, dropout=args.dropout)
+    if args.trainedmodel is not None:
+        unet.load_state_dict(torch.load(args.trainedmodel))
     if args.pretrained:
         unet = torch.hub.load('mateuszbuda/brain-segmentation-pytorch', 'unet',
                               in_channels=3, out_channels=1, init_features=32, pretrained=True)
@@ -285,6 +287,10 @@ if __name__ == "__main__":
     parser.add_argument(
         '--linerimgfolder',
         default='../data/owncrack/liner'
+    )
+    parser.add_argument(
+        '--trainedmodel',
+        default=None
     )
     parser.add_argument('--mixup', default=False, action='store_true')
     parser.add_argument('--alpha', default=1, type=float)
