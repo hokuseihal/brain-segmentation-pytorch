@@ -19,7 +19,7 @@ class LinerCrackDataset(torch.utils.data.Dataset):
     def __init__(self,txt,size,**kwargs):
         self.size=size
         with open(txt) as f:
-            self.txt=[l.strip().replace('jpg','txt') for l in f.readlines() if os.path.exists(l.strip().replace('jpg','txt')) and os.path.exists(l.strip())]
+            self.txt=[l.strip().replace('jpg','txt') for l in f.readlines() if os.path.exists(l.strip()[:-3]+'txt') and os.path.exists(l.strip()[:-3]+'jpg')]
         self.transform=T.Compose([T.Resize(size),T.ToTensor()])
     def __len__(self):
         return len(self.txt)

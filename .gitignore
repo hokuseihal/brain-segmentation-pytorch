@@ -281,3 +281,5 @@ weights
 venv
 .python-version
 *.pth
+testimage
+out

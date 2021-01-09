@@ -286,7 +286,7 @@ if __name__ == "__main__":
     )
     parser.add_argument(
         '--linerimgfolder',
-        default='../data/owncrack/liner'
+        default='datasets/rddline'
     )
     parser.add_argument(
         '--trainedmodel',
