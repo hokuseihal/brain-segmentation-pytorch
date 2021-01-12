@@ -156,7 +156,7 @@ def main(args):
             addvalue(writer, f'mAP:{phase}', np.nanmean(map), epoch)
             print(f'{epoch=}/{args.epochs}:{phase}:{np.mean(losslist):.4f},miou:{np.nanmean(valid_miou):.4f},mAP"{np.nanmean(map):.4f}')
             print((prmap / ((batchidx + 1) * args.batchsize)).int())
-    save(unet, args.savefolder, writer)
+        save(unet, args.savefolder, writer)
 
 
 if __name__ == "__main__":
