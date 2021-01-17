@@ -93,6 +93,7 @@ def main(args):
 
     os.makedirs(args.savefolder, exist_ok=True)
     for epoch in range(preepoch, args.epochs):
+        # args.num_train=0
         for phase in ["train"] * args.num_train + ["valid"]:
             # for phase in ['valid']:
             valid_miou = []

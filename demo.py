@@ -58,7 +58,10 @@ def demo(imgpath='/home/hokusei/src/data/owncrack/img.jpg',modelpath='data/norma
 
 if __name__=='__main__':
     import glob
+    imgfolder='datasets/rddliner'
+    with open(f'{imgfolder}/val.txt') as f:
+        imgp=[l.strip() for l in f.readlines()]
     size=640
-    for p in glob.glob('testimage/*.jpg'):
+    for p in imgp:
         print(p)
-        demo(p,'data/640_8/model.pth',p.replace('testimage','out'),p.replace('testimage','gt'))
+        demo(p,'data/640_8/model.pth',f'out/{p.split("/")[-1]}',f'out_gt/{p.split("/")[-1]}')
