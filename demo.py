@@ -57,11 +57,12 @@ def demo(imgpath='/home/hokusei/src/data/owncrack/img.jpg',modelpath='data/norma
         cv2.imwrite(gt,loadtxt(imgpath.replace('jpg','txt'),imgpath))
 
 if __name__=='__main__':
-    import glob
+    import os
     imgfolder='datasets/rddliner'
     with open(f'{imgfolder}/val.txt') as f:
         imgp=[l.strip() for l in f.readlines()]
     size=640
     for p in imgp:
-        print(p)
-        demo(p,'data/640_8/model.pth',f'out/{p.split("/")[-1]}',f'out_gt/{p.split("/")[-1]}')
+        if os.path.exists(p) and os.path.exists(p.replace('jpg','txt')):
+            print(p)
+            demo(p,'data/640_8/model.pth',f'out/{p.split("/")[-1]}',f'out_gt/{p.split("/")[-1]}')
