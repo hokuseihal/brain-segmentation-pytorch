@@ -44,7 +44,7 @@ def main(args):
     print(hashlib.md5("".join(validmask).encode()).hexdigest())
     # unet=NonLocalUNet(3,3,128)
     unet = UNet(in_channels=3, out_channels=3, cutpath=args.cutpath, dropout=args.dropout)
-    kfac=KFAC(unet,0.1)
+    # kfac=KFAC(unet,0.1)
     if args.trainedmodel is not None:
         unet.load_state_dict(torch.load(args.trainedmodel))
     if args.pretrained:
@@ -141,7 +141,7 @@ def main(args):
                         # print(gradlist)
                         if (batchidx + 1) % args.subdivisions == 0:
                             print('step')
-                            kfac.step()
+                            # kfac.step()
                             optimizer.step()
                             optimizer.zero_grad()
 
