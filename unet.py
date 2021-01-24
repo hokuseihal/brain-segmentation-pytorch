@@ -2,16 +2,24 @@ from collections import OrderedDict
 
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 from torchvision.utils import save_image
+class upsampleconv(nn.Module):
+    def __init__(self,in_ch,out_ch):
+        super(upsampleconv, self).__init__()
+        self.conv=nn.Conv2d(in_ch,out_ch,1,1)
+    def forward(self,x):
+        x=F.interpolate(x,scale_factor=2)
+        x=self.conv(x)
+        return x
 
 
 class UNet(nn.Module):
 
-    def __init__(self, in_channels=3, out_channels=1, init_features=32, cutpath=False, savefolder=False,dropout=0):
+    def __init__(self, in_channels=3, out_channels=1, init_features=32, cutpath=False, savefolder=False,deconv=True):
         super(UNet, self).__init__()
 
         features = init_features
-        self.cutpath = cutpath
         self.savefolder = savefolder
         self.encoder1 = UNet._block(in_channels, features, name="enc1")
         self.pool1 = nn.MaxPool2d(kernel_size=2, stride=2)
@@ -26,43 +34,34 @@ class UNet(nn.Module):
 
         self.upconv4 = nn.ConvTranspose2d(
             features * 16, features * 8, kernel_size=2, stride=2
-        )
+        ) if deconv else upsampleconv(features*16,features*8)
         self.decoder4 = UNet._block((features * 8) * 2, features * 8, name="dec4")
         self.upconv3 = nn.ConvTranspose2d(
             features * 8, features * 4, kernel_size=2, stride=2
-        )
+        ) if deconv else upsampleconv(features*8,features*4)
         self.decoder3 = UNet._block((features * 4) * 2, features * 4, name="dec3")
         self.upconv2 = nn.ConvTranspose2d(
             features * 4, features * 2, kernel_size=2, stride=2
-        )
+        ) if deconv else upsampleconv(features*4,features*2)
         self.decoder2 = UNet._block((features * 2) * 2, features * 2, name="dec2")
         self.upconv1 = nn.ConvTranspose2d(
             features * 2, features, kernel_size=2, stride=2
-        )
+        ) if deconv else upsampleconv(features*2,features)
         self.decoder1 = UNet._block(features * 2, features, name="dec1")
 
         self.conv = nn.Conv2d(
             in_channels=features, out_channels=out_channels, kernel_size=1
         )
-        self.dropout1=nn.Dropout(dropout)
-        self.dropout2=nn.Dropout(dropout)
-        self.dropout3=nn.Dropout(dropout)
-        self.dropout4=nn.Dropout(dropout)
 
     def forward(self, x):
         # x=x.permute(0,3,1,2)
-        enc1 = self.dropout1(self.encoder1(x))
-        enc2 = self.dropout2(self.encoder2(self.pool1(enc1)))
-        enc3 = self.dropout3(self.encoder3(self.pool2(enc2)))
-        enc4 = self.dropout4(self.encoder4(self.pool3(enc3)))
+        enc1 = self.encoder1(x)
+        enc2 = self.encoder2(self.pool1(enc1))
+        enc3 = self.encoder3(self.pool2(enc2))
+        enc4 = self.encoder4(self.pool3(enc3))
 
         bottleneck = self.bottleneck(self.pool4(enc4))
 
-        if self.cutpath:
-            enc1 = torch.zeros_like(enc1)
-            enc2 = torch.zeros_like(enc2)
-            enc3 = torch.zeros_like(enc3)
-            enc4 = torch.zeros_like(enc4)
         dec4 = self.upconv4(bottleneck)
         dec4 = torch.cat((dec4, enc4), dim=1)
         dec4 = self.decoder4(dec4)
@@ -131,13 +130,9 @@ class UNet(nn.Module):
         )
 
 
-class wrapped_UNet(nn.Module):
-    def __init__(self, unet, in_ch, out_ch):
-        super(wrapped_UNet, self).__init__()
-        self.unet = unet
-        self.conv = nn.Conv2d(in_ch, out_ch, 1)
-
-    def forward(self, x):
-        x = self.unet(x)
-        x = self.conv(x)
-        return x
+if __name__=="__main__":
+    from kfac import KFAC
+    model=UNet(deconv=False)
+    output=model(torch.randn(1,3,256,256))
+    kfac=KFAC(model,eps=0.1)
+    print(len(kfac.params))
