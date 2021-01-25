@@ -14,7 +14,7 @@ from torchvision.utils import save_image
 
 from core import save, addvalue
 from loss import DiceLoss, FocalLoss
-from unet import UNet, wrapped_UNet
+from unet import UNet
 # from utils.dataset import MulticlassCrackDataset as Dataset
 from utils.dataset import LinerCrackDataset
 from utils.util import miouf, prmaper,mAP
@@ -42,34 +42,16 @@ def main(args):
     validmask = sorted(list(set(masks) - set(trainmask)))
     import hashlib
     print(hashlib.md5("".join(validmask).encode()).hexdigest())
-    # unet=NonLocalUNet(3,3,128)
-    unet = UNet(in_channels=3, out_channels=3, cutpath=args.cutpath, dropout=args.dropout)
-    # kfac=KFAC(unet,0.1)
+    unet = UNet(in_channels=3, out_channels=3,deconv=not args.upconv)
+    kfac=KFAC(unet,0.1)
     if args.trainedmodel is not None:
         unet.load_state_dict(torch.load(args.trainedmodel))
-    if args.pretrained:
-        unet = torch.hub.load('mateuszbuda/brain-segmentation-pytorch', 'unet',
-                              in_channels=3, out_channels=1, init_features=32, pretrained=True)
-        unet = wrapped_UNet(unet, 1, 3)
     writer = {}
     worter = {}
     preepoch = 0
-    # if args.resume and load_check(args.savefolder):
-    #     saved = load(args.savefolder)
-    #     writer, preepoch, modelpath, worter = saved['writer'], saved['epoch'], saved['modelpath'], saved['worter']
-    #     trainmask, validmask = worter['trainmask'], worter['validmask']
-    #     unet.load_state_dict(torch.load(modelpath))
-    #     print('load model')
-    # unet.load_state_dict(torch.load('model.pth'))
     unet.to(device)
-    # saveworter(worter, 'trainmask', trainmask)
-    # saveworter(worter, 'validmask', validmask)
-    # traindataset = Dataset(trainmask, train=True, random=args.random, split=args.split,args=args,size=(args.size,args.size))
-    # validdataset = Dataset(validmask, train=False, random=args.random, split=args.split,args=args,size=(args.size,args.size))
     traindataset = LinerCrackDataset(f'{args.linerimgfolder}/train.txt', (args.size, args.size))
     validdataset = LinerCrackDataset(f'{args.linerimgfolder}/val.txt', (args.size, args.size))
-    # traindataset=torch.utils.data.ConcatDataset([traindataset,linertraindataset])
-    # validdataset=torch.utils.data.ConcatDataset([validdataset,validdataset])
     print(f'train"{len(traindataset)},val:{len(validdataset)}')
     trainloader = torch.utils.data.DataLoader(traindataset, batch_size=args.batchsize // args.subdivisions,
                                               shuffle=True,
@@ -141,7 +123,8 @@ def main(args):
                         # print(gradlist)
                         if (batchidx + 1) % args.subdivisions == 0:
                             print('step')
-                            # kfac.step()
+                            if args.kfac:
+                                kfac.step()
                             optimizer.step()
                             optimizer.zero_grad()
 
@@ -296,9 +279,11 @@ if __name__ == "__main__":
         '--trainedmodel',
         default=None
     )
+    parser.add_argument('--kfac',default=False,action='store_true')
     parser.add_argument('--mixup', default=False, action='store_true')
     parser.add_argument('--alpha', default=1, type=float)
     parser.add_argument('--half', default=False, action='store_true')
+    parser.add_argument('--upconv',default=False,action='store_true')
     args = parser.parse_args()
     args.num_train = args.split
     args.epochs *= args.split
