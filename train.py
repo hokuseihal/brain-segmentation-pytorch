@@ -44,6 +44,7 @@ def main(args):
     print(hashlib.md5("".join(validmask).encode()).hexdigest())
     unet = UNet(in_channels=3, out_channels=3,deconv=not args.upconv)
     kfac=KFAC(unet,0.1)
+    print(f'num_kfac_optimization:{len(list(kfac.params))},enable:{args.kfac}')
     if args.trainedmodel is not None:
         unet.load_state_dict(torch.load(args.trainedmodel))
     writer = {}
@@ -73,6 +74,7 @@ def main(args):
     optimizer = optim.Adam(unet.parameters(), lr=args.lr)
     clscolor = torch.tensor([[0, 0, 0], [255, 255, 255], [0, 255, 0]])
 
+    epochtime = {}
     os.makedirs(args.savefolder, exist_ok=True)
     for epoch in range(preepoch, args.epochs):
         # args.num_train=0
@@ -91,6 +93,7 @@ def main(args):
             else:
                 unet.eval()
             batchstarttime = 0
+            epochstarttime=time.time()
             for batchidx, data in enumerate(loaders[phase]):
                 print(f'batchtime:{time.time() - batchstarttime}')
                 batchstarttime = time.time()
@@ -135,6 +138,8 @@ def main(args):
                     if batchidx == 0: save_image(
                         torch.cat([x, setcolor(y_true, clscolor), setcolor(y_pred.argmax(1), clscolor)], dim=2),
                         f'{args.savefolder}/{epoch}.jpg')
+            epochtime[phase]=time.time()-epochstarttime
+            print(epochtime)
             addvalue(writer, f'loss:{phase}', np.mean(losslist), epoch)
             addvalue(writer, f'mIoU:{phase}', np.nanmean(valid_miou), epoch)
             addvalue(writer, f'mAP:{phase}', np.nanmean(map), epoch)

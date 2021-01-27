@@ -7,7 +7,7 @@ from torchvision.utils import save_image
 class upsampleconv(nn.Module):
     def __init__(self,in_ch,out_ch):
         super(upsampleconv, self).__init__()
-        self.conv=nn.Conv2d(in_ch,out_ch,1,1)
+        self.conv=nn.Conv2d(in_ch,out_ch,3,padding=1)
     def forward(self,x):
         x=F.interpolate(x,scale_factor=2)
         x=self.conv(x)
