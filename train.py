@@ -71,7 +71,12 @@ def main(args):
     else:
         assert False, 'set correct loss.'
 
-    optimizer = optim.Adam(unet.parameters(), lr=args.lr)
+    if args.optimizer=='Adam':
+        optimizer = optim.Adam(unet.parameters(), lr=args.lr)
+    elif args.optimizer=='SGD':
+        optimizer=optim.SGD(unet.parameters(),lr=args.lr)
+    else:
+        assert False,'set correct optimizer'
     clscolor = torch.tensor([[0, 0, 0], [255, 255, 255], [0, 255, 0]])
 
     epochtime = {}
@@ -289,6 +294,7 @@ if __name__ == "__main__":
     parser.add_argument('--alpha', default=1, type=float)
     parser.add_argument('--half', default=False, action='store_true')
     parser.add_argument('--upconv',default=False,action='store_true')
+    parser.add_argument('--optimizer',default='Adam')
     args = parser.parse_args()
     args.num_train = args.split
     args.epochs *= args.split
