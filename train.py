@@ -18,6 +18,7 @@ from unet import UNet
 # from utils.dataset import MulticlassCrackDataset as Dataset
 from utils.dataset import LinerCrackDataset
 from utils.util import miouf, prmaper,mAP
+from kfacopitm import KFACOptimizer
 
 
 def setcolor(idxtendor, colors):
@@ -75,6 +76,9 @@ def main(args):
         optimizer = optim.Adam(unet.parameters(), lr=args.lr)
     elif args.optimizer=='SGD':
         optimizer=optim.SGD(unet.parameters(),lr=args.lr)
+    elif args.optimizer=='KFAC':
+        optimizer=KFACOptimizer(unet)
+        optimizer.acc_stats=True
     else:
         assert False,'set correct optimizer'
     clscolor = torch.tensor([[0, 0, 0], [255, 255, 255], [0, 255, 0]])
