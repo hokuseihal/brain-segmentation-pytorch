@@ -78,7 +78,7 @@ class MulticlassCrackDataset(torch.utils.data.Dataset):
         assert len(self.mask)==len(self.raw)
         self.in_channels=3
         self.out_channels=3
-        self.clscolor=torch.tensor(clscolor)/255
+        self.clscolor=torch.tensor(clscolor)//255
         self.transform=transform if transform is not None else Compose([Resize((256,256)),ColorJitter(),ToTensor()])
         self.random=random
         self.pretransforms=Compose([Crops(self)])
