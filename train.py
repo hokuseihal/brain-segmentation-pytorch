@@ -5,7 +5,7 @@ import random
 import glob
 from net.sngan import SNResNetDiscriminator
 from multiprocessing import cpu_count
-
+from utils.dataset import LinerCrackDataset
 import numpy as np
 import torch
 import torch.nn as nn
@@ -68,43 +68,22 @@ def main(args):
     device = torch.device("cpu" if not torch.cuda.is_available() else args.device)
     print(device)
 
-    masks = glob.glob(f'{args.maskfolder}/*.jpg')
-    k_shot = int(len(masks) * 0.8) if args.k_shot == 0 else args.k_shot
-    trainmask = random.sample(masks, k=k_shot)
-    validmask = list(set(masks) - set(trainmask))
 
     unet = UNet(in_channels=3, out_channels=3, cutpath=args.cutpath)
-    if args.pretrained:
-        unet = torch.hub.load('mateuszbuda/brain-segmentation-pytorch', 'unet',
-                              in_channels=3, out_channels=1, init_features=32, pretrained=True)
-        unet = wrapped_UNet(unet, 1, 3)
     discriminator=SNResNetDiscriminator().to(device)
     writer = {}
     worter = {}
     preepoch = 0
 
-    if args.resume and load_check(args.savefolder):
-        saved = load(args.savefolder)
-        writer, preepoch, modelpath, worter = saved['writer'], saved['epoch'], saved['modelpath'], saved['worter']
-        trainmask, validmask = worter['trainmask'], worter['validmask']
-        unet.load_state_dict(torch.load(modelpath))
-        print('load model')
-    elif args.pretrained_G!='none' and load_check(args.pretrained_G):
-        saved=load(args.pretrained_G)
-        writer, _, modelpath, worter = saved['writer'], saved['epoch'], saved['modelpath'], saved['worter']
-        trainmask, validmask = worter['trainmask'], worter['validmask']
-        worter={}
-        writer={}
-        unet.load_state_dict(torch.load(modelpath))
-        print('load model G')
     unet.to(device)
-    saveworter(worter, 'trainmask', trainmask)
-    saveworter(worter, 'validmask', validmask)
-    traindataset = Dataset(trainmask, train=True, random=args.random, split=args.split)
-    validdataset = Dataset(validmask, train=False, random=args.random, split=args.split)
-    trainloader = torch.utils.data.DataLoader(traindataset, batch_size=args.batchsize, shuffle=True,
+    traindataset = LinerCrackDataset(f'{args.linerimgfolder}/train.txt', (args.size, args.size))
+    validdataset = LinerCrackDataset(f'{args.linerimgfolder}/val.txt', (args.size, args.size))
+    print(f'train"{len(traindataset)},val:{len(validdataset)}')
+    trainloader = torch.utils.data.DataLoader(traindataset, batch_size=args.batchsize // args.subdivisions,
+                                              shuffle=True,
                                               num_workers=args.workers)
-    validloader = torch.utils.data.DataLoader(validdataset, batch_size=args.batchsize, shuffle=True,
+    validloader = torch.utils.data.DataLoader(validdataset, batch_size=args.batchsize // args.subdivisions,
+                                              shuffle=True,
                                               num_workers=args.workers)
     loaders = {'train': trainloader, 'valid': validloader}
     if args.saveimg: unet.savefolder = args.savefolder
@@ -116,7 +95,7 @@ def main(args):
     for epoch in range(preepoch, args.epochs):
         valid_miou = []
         for phase in ["train"] * args.num_train + ["valid"]:
-            prmap = torch.zeros(len(traindataset.clscolor), len(traindataset.clscolor))
+            prmap = torch.zeros(3, 3)
             if phase == "train":
                 unet.train()
                 if args.resize:
@@ -307,6 +286,20 @@ if __name__ == "__main__":
     parser.add_argument(
         "--pretrained_G",
         default='none',
+    )
+    parser.add_argument(
+        '--linerimgfolder',
+        default='datasets/rddline'
+    )
+    parser.add_argument(
+        '--size',
+        default=256,
+        type=int,
+    )
+    parser.add_argument(
+        '--subdivisions',
+        default=1,
+        type=int
     )
     args = parser.parse_args()
     args.num_train = args.split
