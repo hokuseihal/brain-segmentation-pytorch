@@ -9,6 +9,7 @@ from kfac import KFAC
 import numpy as np
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 import torch.optim as optim
 from torchvision.utils import save_image
 
@@ -19,6 +20,7 @@ from unet import UNet
 from utils.dataset import LinerCrackDataset
 from utils.util import miouf, prmaper,mAP
 from kfacopitm import KFACOptimizer
+from utils.cutmix import cutmix
 
 
 def setcolor(idxtendor, colors):
@@ -44,7 +46,7 @@ def main(args):
     import hashlib
     print(hashlib.md5("".join(validmask).encode()).hexdigest())
     unet = UNet(in_channels=3, out_channels=3,deconv=not args.upconv)
-    kfac=KFAC(unet,0.1)
+    kfac=KFAC(unet,0.1,update_freq=100)
     print(f'num_kfac_optimization:{len(list(kfac.params))},enable:{args.kfac}')
     if args.trainedmodel is not None:
         unet.load_state_dict(torch.load(args.trainedmodel))
@@ -75,7 +77,7 @@ def main(args):
     if args.optimizer=='Adam':
         optimizer = optim.Adam(unet.parameters(), lr=args.lr)
     elif args.optimizer=='SGD':
-        optimizer=optim.SGD(unet.parameters(),lr=args.lr)
+        optimizer=optim.SGD(unet.parameters(),lr=1e-3,momentum=0.9,dampening=1e-3,weight_decay=0)
     elif args.optimizer=='KFAC':
         optimizer=KFACOptimizer(unet)
         optimizer.acc_stats=True
@@ -123,6 +125,12 @@ def main(args):
                     else:
                         y_pred = unet(x)
                         loss = lossf(y_pred, y_true.long())
+                        if args.CR:
+                            x_cutmix,cutparam=cutmix(x)
+                            y_pred_cutmix,_=cutmix(y_pred,cutparam)
+                            CRloss=F.mse_loss(unet(x_cutmix),y_pred_cutmix)
+                            print(CRloss)
+                            addvalue(writer, f'CRloss:{phase}', CRloss.item(), epoch)
                     losslist += [loss.item()]
                     print(f'{epoch} {batchidx}/{len(loaders[phase])} {loss.item():.6f},{phase}')
                     print(f'time:{time.time() - batchstarttime}')
@@ -164,7 +172,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--batchsize",
         type=int,
-        default=8,
+        default=32,
         help="input batch size for training (default: 8)",
     )
     parser.add_argument(
@@ -176,7 +184,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--lr",
         type=float,
-        default=0.0001,
+        default=1e-3,
         help="initial learning rate (default: 0.001)",
     )
     parser.add_argument(
@@ -287,7 +295,7 @@ if __name__ == "__main__":
     )
     parser.add_argument(
         '--linerimgfolder',
-        default='datasets/rddline'
+        default='datasets/liner'
     )
     parser.add_argument(
         '--trainedmodel',
@@ -295,6 +303,7 @@ if __name__ == "__main__":
     )
     parser.add_argument('--kfac',default=False,action='store_true')
     parser.add_argument('--mixup', default=False, action='store_true')
+    parser.add_argument('--CR', default=False, action='store_true')
     parser.add_argument('--alpha', default=1, type=float)
     parser.add_argument('--half', default=False, action='store_true')
     parser.add_argument('--upconv',default=False,action='store_true')
